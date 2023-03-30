@@ -10,7 +10,7 @@ module ALU
     wire [5:0] a,b,FUNC,Y;
     wire enf,ena,enb;
     wire OF;
-    decoder dec(.sel(sel),.en(~en),.enf(enf),.ena(ena),.enb(enb));
+    decoder dec(.sel(sel),.en(en),.enf(enf),.ena(ena),.enb(enb));
     FF Freg(.clk(clk),.en(enf),.x(x),.o(FUNC));
     FF Areg(.clk(clk),.en(ena),.x(x),.o(a));
     FF Breg(.clk(clk),.en(enb),.x(x),.o(b));
