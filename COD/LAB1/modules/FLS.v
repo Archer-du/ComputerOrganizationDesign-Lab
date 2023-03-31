@@ -6,7 +6,7 @@ module FLS
         output [6:0] f
     );
     //初始化
-    reg [1:0] cs=2'b00,ns;      //state=={en_0,en_1}
+    reg [1:0] cs=2'b00,ns;
     reg [6:0] f_0,f_1;
     wire [6:0] F;
     alu_unit #(7) alu(.a(f_0),.b(f_1),.func(4'b0000),.y(F));
