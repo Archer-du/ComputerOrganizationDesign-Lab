@@ -30,8 +30,6 @@ bubblesort:
 # a1 stores the unsorted list, a0 contains the length of it
 		addi t0, zero, 1	#build const 1
 		bge	 t0, a0, done2
-		mv	 t0, zero
-		addi t0, t0, 1
 sort:	bge	 t0, a0, sorted
 		mv	 t1, a1
 		add	 t1, t1, t0
