@@ -174,6 +174,18 @@ output2:
 		ret
 ```
 
+## 附加内容
+
+### 测量程序执行时间
+
+定时执行功能：设定时钟周期为1ms
+
+<img src="C:\Users\Archer\AppData\Roaming\Typora\typora-user-images\image-20230403220058042.png" alt="image-20230403220058042" style="zoom: 67%;" />
+
+<img src="C:\Users\Archer\AppData\Roaming\Typora\typora-user-images\image-20230403220754146.png" alt="image-20230403220754146" style="zoom:50%;" />
+
+程序执行共经历2466个时钟周期，故在时钟周期为1ms的条件下程序执行时间为2.4s。
+
 ## debug过程
 
 ​	算法与代码实现较为简单，无值得记录的debug内容。
