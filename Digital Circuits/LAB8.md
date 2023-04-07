@@ -111,7 +111,7 @@
       output reg[2:0]an,
       output reg[3:0]hex
   );
-      reg [3:0]freq=0;
+  reg [3:0]freq=0;
   reg b_r1,b_r2;
   reg [7:0]num;
   reg rev=0;
