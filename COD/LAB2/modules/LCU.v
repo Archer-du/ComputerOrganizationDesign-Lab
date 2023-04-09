@@ -27,8 +27,11 @@ module LCU(
     assign pulse_de=r1_de&(~r2_de);
     //构造单周期脉冲
     reg [2:0] RP=0,WP=0;
+    wire [3:0] O;
+    reg [3:0] o;                //缓存历史数据(一层)
     assign p=RP;
-    assign out=rd;
+    assign O=rd;
+    assign out=full?o:O;        //该mux防止out输出被队将满时的入队数据覆盖
     always@(posedge clk)begin
         if(rst)begin
             valid[7:0]=8'b0;    //reg0硬连线const0
@@ -36,10 +39,12 @@ module LCU(
             WP=0;
             full=0;
             emp=1;
+            ra=0;
         end
         else begin
             if(pulse_en)begin
                 if(!full)begin
+                    o<=O;       //入队时备份
                     wa<=WP;
                     wd<=in;
                     valid[WP]<=1;
