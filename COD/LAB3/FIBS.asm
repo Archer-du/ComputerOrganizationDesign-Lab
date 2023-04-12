@@ -16,6 +16,8 @@ main:	la	s3, R_data
 	lw	s6, 0(s6)
 	jal	ra, poll
 	jal	ra, Fibs
+	la	t0, data		#read pointer
+	jal	ra, trans
 	li 	a7, 10
 	ecall
 #subroutine:a3=int Fibs(int a0)
@@ -38,10 +40,10 @@ loop1:	add	t0, t0, t2
 	jal   	zero, loop1
 exit1:	ret
 
-#transfer
-trans:	la	t0, data		#read pointer
-	lw	t1, 0(t0)
-loop3:	li	t3, 0xf0000000		#t3:tmp
+#transmmiter
+trans:	lw	t1, 0(t0)
+	li	t4, 8			#t4: cnt
+loop3:	li	t3, 0xf0000000		#t3: tmp
 	and	t2, t1, t3
 	srli	t2, t2, 28
 	beq	zero, t2, done1
@@ -53,18 +55,27 @@ loop2:	lw	t3, 0(s6)
 	beq	zero, t3, loop2
 	sw	t2, 0(s5)
 done1:	slli	t1, t1, 4
-	jal	zero, loop3
+	addi	t4, t4, -1
+	blt	zero, t4, loop3		#if cnt>0 continue
+	li 	t2, 10
+loop4:	lw	t3, 0(s6)
+	beq	zero, t3, loop4
+	sw	t2, 0(s5)
+	addi	t0, t0, 4
+	addi	a0, a0, -1
+	bge	a0, zero, trans
+	ret
 
 #subroutine:polling (return 3<=a0<=40)
 poll:	la	t1, value
-loop3:	lw	t0, 0(s4)
-	beq	zero, t0, loop3
+loop5:	lw	t0, 0(s4)
+	beq	zero, t0, loop5
 	lw	a0, 0(s3)
 	li 	t0, ':'
 	beq	a0, t0, done2
 	sw	a0, 0(t1)
 	addi	t1, t1, 4
-	jal	zero, loop3
+	jal	zero, loop5
 done2:	la	t1, value
 	lw	t2, 0(t1)		#ones or tens
 	lw	t0, 4(t1)		#ones or null
