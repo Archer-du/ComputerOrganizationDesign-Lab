@@ -14,7 +14,7 @@ main:	la	s3, R_data
 	lw	s4, 0(s4)
 	lw	s5, 0(s5)
 	lw	s6, 0(s6)
-	jal	ra, poll		
+	jal	ra, conv		
 	jal	ra, Fibs
 	la	t0, data		#read pointer
 	jal	ra, trans
@@ -59,7 +59,7 @@ num:	addi	t2, t2, 48
 loop1:	lw	t3, 0(s6)		#polling until transmitter control ready
 	beq	zero, t3, loop1
 	sw	t2, 0(s5)
-done1:	slli	t1, t1, 4		#get next 4 bits
+	slli	t1, t1, 4		#get next 4 bits
 	addi	t4, t4, -1		#32 bits number needs 8 transmission at most
 	blt	zero, t4, output	#if cnt > 0 continue
 	li 	t2, 10			#else print "\n"
@@ -71,18 +71,18 @@ loop2:	lw	t3, 0(s6)
 	bge	a0, zero, trans
 	ret
 
-#subroutine-polling: keyboard input N, return decimal N(a0)
-poll:	la	t1, ASC
+#subroutine-convert: keyboard input N, return decimal N(a0)
+conv:	la	t1, ASC
 rec:	lw	t0, 0(s4)
 	beq	zero, t0, rec		#polling until receive control ready
 	lw	a0, 0(s3)
 	li 	t0, ':'	
-	beq	a0, t0, conv		#if receive data == ":" , terminate 
+	beq	a0, t0, decd		#if receive data == ":" , terminate 
 	sw	a0, 0(t1)		#else write to memory
 	addi	t1, t1, 4
 	jal	zero, rec
 	#transfer
-conv:	la	t1, ASC	
+decd:	la	t1, ASC	
 	lw	t2, 0(t1)		#ones/tens
 	lw	t0, 4(t1)		#ones/null
 	addi	t2, t2,	-48
