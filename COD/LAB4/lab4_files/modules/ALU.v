@@ -17,18 +17,6 @@ module ALU
                 alu_res = alu_op1 - alu_op2;
                 OF = (~alu_op1[WIDTH-1]&alu_op2[WIDTH-1]&alu_res[WIDTH-1] | alu_op1[WIDTH-1]&~alu_op2[WIDTH-1]&~alu_res[WIDTH-1]);
             end
-            4'b0010: begin
-                alu_res = (alu_op1==alu_op2);
-                OF = 0;
-            end
-            4'b0011: begin
-                alu_res = (alu_op1<alu_op2);
-                OF = 0;
-            end
-            4'b0100: begin
-                alu_res = ($signed(alu_op1)<$signed(alu_op2));
-                OF = 0;
-            end
             4'b0101: begin
                 alu_res = alu_op1 & alu_op2;
                 OF = 0;
