@@ -22,12 +22,6 @@ module CTRL(
         localparam XOR = 4'b0111;
     localparam S_type = 7'b0100011;
     localparam B_type = 7'b1100011;
-        localparam NONE_BR = 3'b000;
-        localparam BEQ = 3'b001;
-        localparam BLT = 3'b010;
-        localparam BNE = 3'b011;
-        localparam BGE = 3'b100;
-        localparam BLTU = 3'b101;
     localparam class_load = 7'b0000011;
     localparam U_type_auipc = 7'b0010111;
     localparam U_type_lui = 7'b0110111;

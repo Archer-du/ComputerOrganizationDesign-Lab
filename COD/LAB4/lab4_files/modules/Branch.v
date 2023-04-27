@@ -31,7 +31,7 @@ module Branch(
                     br = 1;
             end
             BLTU: begin
-                if($signed(alu_op1) < $signed(alu_op2))
+                if($signed(op1) < $signed(op2))
                     br = 1;
             end
             default: br = 0;
