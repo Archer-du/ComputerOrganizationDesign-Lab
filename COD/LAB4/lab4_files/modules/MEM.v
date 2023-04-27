@@ -22,8 +22,10 @@ module MEM(
    );
 
    DM Data_Mem(
+    .clk(clk),
+    .we(dm_we),
+    
     .dm_addr(dm_addr),
-    .dm_we(dm_we),
     .dm_din(dm_din),
     .dm_dout(dm_dout),
 

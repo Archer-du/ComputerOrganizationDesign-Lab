@@ -3,7 +3,7 @@ module PC(
     input clk,
 
     input [31:0] pc_next,
-    output [31:0] pc_cur
+    output reg [31:0] pc_cur
 );
     always @(posedge clk or posedge rst) begin
         if(rst) begin

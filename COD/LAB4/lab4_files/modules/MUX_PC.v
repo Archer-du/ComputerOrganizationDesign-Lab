@@ -5,7 +5,7 @@ module MUX_PC(
     input [31:0] pc_jal_br,
     input [31:0] pc_jalr,
 
-    output [31:0] pc_next
+    output reg [31:0] pc_next
 );
     always@(*) begin
         if(jal == 1 || br == 1) begin

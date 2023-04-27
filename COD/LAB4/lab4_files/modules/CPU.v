@@ -111,7 +111,7 @@ module CPU(
         .sel(wb_sel),
         .alu_res(alu_res),
         .pc_add4(pc_add4),
-        .mem_rd(mem_rd),
+        .mem_rd(mem_dout),
         .imm(imm),
         .wb_data(wb_data)
     );
@@ -141,5 +141,7 @@ module CPU(
 
     assign im_addr = pc_cur;
     assign inst = im_dout;
+    assign mem_din = rd1;
+    assign mem_addr = alu_res;
 
 endmodule

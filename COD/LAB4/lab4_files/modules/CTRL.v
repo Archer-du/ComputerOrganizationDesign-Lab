@@ -1,14 +1,14 @@
 module CTRL(
     input [31:0] inst,
 
-    output jal, jalr,
-    output [1:0] br_type,
-    output wb_en,
-    output [1:0] wb_sel,
-    output alu_op1_sel, alu_op2_sel,
-    output [3:0] alu_ctrl,
+    output reg jal, jalr,
+    output reg [1:0] br_type,
+    output reg wb_en,
+    output reg [1:0] wb_sel,
+    output reg alu_op1_sel, alu_op2_sel,
+    output reg [3:0] alu_ctrl,
     //output [2:0] imm_type,
-    output mem_we
+    output reg mem_we
 );
     //inst type signals
     localparam R_type = 7'b0110011;
@@ -124,6 +124,16 @@ module CTRL(
                 wb_sel = PC_ADD4;
                 alu_op1_sel = PC_CUR;
                 alu_op2_sel = IMMGEN;
+                alu_ctrl = 4'b0000;
+                mem_we = 0;
+            end
+            default: begin
+                jal = 0;
+                jalr = 0;
+                br_type = NONE_BR;
+                wb_en = 0;
+                alu_op1_sel = RD0;
+                alu_op2_sel = RD1;
                 alu_ctrl = 4'b0000;
                 mem_we = 0;
             end

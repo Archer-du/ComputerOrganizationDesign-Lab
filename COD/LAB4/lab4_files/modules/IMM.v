@@ -1,6 +1,6 @@
 module IMM(
     input [31:0] inst,
-    output [31:0] imm
+    output reg [31:0] imm
 );
 localparam R_type = 7'b0110011;
 localparam I_type = 7'b0010011;

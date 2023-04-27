@@ -6,7 +6,7 @@ module MUX_RFwrite(
     input [31:0] mem_rd,
     input [31:0] imm,
 
-    output [31:0] wb_data
+    output reg [31:0] wb_data
 );
     localparam ALU_RES = 2'b00;
     localparam PC_ADD4 = 2'b01;
