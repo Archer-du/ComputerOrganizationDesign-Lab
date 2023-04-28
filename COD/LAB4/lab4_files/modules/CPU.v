@@ -17,14 +17,14 @@ module CPU(
     output [31:0] current_pc, 	            // Current_pc
     output [31:0] next_pc,
     input [31:0] cpu_check_addr,	        // Check current datapath state (code)
-    output reg [31:0] cpu_check_data      // Current datapath state data
+    output [31:0] cpu_check_data      // Current datapath state data
 
 );
     // Write your CPU here!
     wire [31:0] pc_next, pc_cur;
     wire [31:0] pc_add4;
     wire [31:0] pc_jalr;
-    wire [1:0] br_type;
+    wire [2:0] br_type;
     wire br;
     wire jal, jalr;
     wire [31:0] inst;
@@ -32,12 +32,12 @@ module CPU(
     wire [1:0] wb_sel;
     wire alu_op1_sel, alu_op2_sel;
     wire [3:0] alu_ctrl;
-    wire mem_we;
     wire [31:0] alu_op1, alu_op2;
     wire [31:0] alu_res;
     wire [31:0] rd0, rd1, rd_dbg;
     wire [31:0] wb_data;
     wire [31:0] imm;
+    wire [31:0] check_data;
 
     CTRL signals_controller(
         .inst(inst),
@@ -93,14 +93,14 @@ module CPU(
         .res(pc_add4)
     );
     
-    MUX_ALU ALU_MUX1(
+    MUX ALU_MUX1(
         .sel(alu_op1_sel),
         .src0(rd0),
         .src1(pc_cur),
         .res(alu_op1)
     );
 
-    MUX_ALU ALU_MUX2(
+    MUX ALU_MUX2(
         .sel(alu_op2_sel),
         .src0(rd1),
         .src1(imm),
@@ -139,9 +139,46 @@ module CPU(
         .pc_next(pc_next)
     );
 
+    MUX_CPU_DataCheck MUX_CPU_DataCheck(
+        .check_addr(cpu_check_addr),
+
+        .pc_in(pc_next),
+        .pc_out(pc_cur),
+        .inst(inst),
+        .rf_ra0(inst[19:15]),
+        .rf_ra1(inst[24:20]),
+        .rf_rd0(rd0),
+        .rf_rd1(rd1),
+        .rf_wa(inst[11:7]),
+        .rf_wd(wb_data),
+        .rf_we(wb_en),
+        .imm(imm),
+        .alu_sr1(alu_op1),
+        .alu_sr2(alu_op2),
+        .alu_func(alu_ctrl),
+        .alu_ans(alu_res),
+        .pc_jalr(pc_jalr),
+        .dm_addr(alu_res),
+        .dm_din(mem_din),
+        .dm_dout(mem_dout),
+        .dm_we(mem_we),
+
+        .check_data(check_data)
+    );
+
+    MUX Debug_MUX(
+        .src0(check_data),
+        .src1(rd_dbg),
+        .sel(cpu_check_addr[12]),
+        .res(cpu_check_data)
+    );
+
     assign im_addr = pc_cur;
     assign inst = im_dout;
     assign mem_din = rd1;
     assign mem_addr = alu_res;
+
+    assign current_pc = pc_cur;
+    assign next_pc = pc_next;
 
 endmodule
