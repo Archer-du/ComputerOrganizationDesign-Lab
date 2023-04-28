@@ -29,9 +29,6 @@ module RF
         regfile[3] = 32'h1800;
     end
 
-    assign rd0 = regfile[ra0],rd1 = regfile[ra1];
-    assign rd_dbg = ra_dbg;
-
     always@(posedge clk)begin
         regfile[0] <= 0;
         if(we)begin
@@ -39,4 +36,7 @@ module RF
             regfile[wa] <= wd;
         end
     end
+
+    assign rd0 = regfile[ra0],rd1 = regfile[ra1];
+    assign rd_dbg = regfile[ra_dbg];
 endmodule

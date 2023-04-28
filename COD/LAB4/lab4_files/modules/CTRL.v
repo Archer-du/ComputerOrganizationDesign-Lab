@@ -82,10 +82,7 @@ module CTRL(
                 alu_op2_sel = IMMGEN;
                 mem_we = 0;
                 case(inst[14:12])
-                    3'b000: begin
-                        if(inst[30]) alu_ctrl = SUB;
-                        else alu_ctrl = ADD;
-                    end
+                    3'b000: alu_ctrl = ADD;
                     3'b001: alu_ctrl = SLL;
                     3'b101: alu_ctrl = SRL;
                     3'b110: alu_ctrl = OR;
