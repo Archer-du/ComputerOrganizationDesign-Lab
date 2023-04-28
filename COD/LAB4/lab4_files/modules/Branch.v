@@ -17,22 +17,27 @@ module Branch(
             BEQ: begin
                 if(op1 == op2)
                     br = 1;
+                else br = 0;
             end
             BLT: begin
-                if(op1 < op2)
+                if($signed(op1) < $signed(op2))
                     br = 1;
+                else br = 0;
             end
             BNE: begin
                 if(op1 != op2)
                     br = 1;
+                else br = 0;
             end
             BGE: begin
-                if(op1 >= op2)
+                if($signed(op1) >= $signed(op2))
                     br = 1;
+                else br = 0;
             end
             BLTU: begin
-                if($signed(op1) < $signed(op2))
+                if(op1 < op2)
                     br = 1;
+                else br = 0;
             end
             default: br = 0;
         endcase

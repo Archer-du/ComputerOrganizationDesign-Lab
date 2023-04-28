@@ -96,7 +96,6 @@ module CTRL(
                 jalr = 0;
                 br_type = NONE_BR;
                 wb_en = 0;
-                //wb_sel
                 alu_op1_sel = RS1;
                 alu_op2_sel = IMMGEN;
                 alu_ctrl = 4'b0000;
@@ -106,10 +105,10 @@ module CTRL(
                 jal = 0;
                 jalr = 0;
                 wb_en = 0;
-                alu_op1_sel = RS1;
+                alu_op1_sel = PC_CUR;
                 alu_op2_sel = IMMGEN;
                 alu_ctrl = 4'b0000;
-                mem_we = 1;
+                mem_we = 0;
                 case(inst[14:12])
                     3'b000: br_type = BEQ;
                     3'b001: br_type = BNE;

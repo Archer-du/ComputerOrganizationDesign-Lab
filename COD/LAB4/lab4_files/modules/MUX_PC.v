@@ -11,7 +11,7 @@ module MUX_PC(
         if(jal == 1 || br == 1) begin
             pc_next = pc_jal_br;
         end
-        else if(pc_jalr == 1) begin
+        else if(jalr == 1) begin
             pc_next = pc_jalr;
         end
         else pc_next = pc_add4;
