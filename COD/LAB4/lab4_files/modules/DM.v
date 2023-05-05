@@ -12,7 +12,7 @@ module DM(
 DATA_MEM DATA_MEM (
   .a(dm_addr[9:2]),        // input wire [7 : 0] a
   .d(dm_din),        // input wire [31 : 0] d
-  .dpra(mem_check_addr[9:2]),  // input wire [7 : 0] dpra
+  .dpra(mem_check_addr[7:0]),  // input wire [7 : 0] dpra
   .clk(clk),    // input wire clk
   .we(we),      // input wire we
   .spo(dm_dout),    // output wire [31 : 0] spo
