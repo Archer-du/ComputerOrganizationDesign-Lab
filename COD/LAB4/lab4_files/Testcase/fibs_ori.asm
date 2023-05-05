@@ -1,3 +1,4 @@
+# win: 0x3008 ~ 0x3020
 .data
 data:	.space 168			#values of F(0)...F(N)
 .text

@@ -24,8 +24,7 @@
 	beq x5, x6, FAIL	# 不应跳转
 	beq x8, x7, TEST1	# 应跳转
 	
-FAIL:	
-	lui x7 7
+FAIL:	lui x7 7
 	addi x7 x7 0x700
 	addi x7 x7 0x700
 	addi x7 x7 0x100	# x7 = 7f00
@@ -33,8 +32,8 @@ FAIL:
 	sw x8 16(x7)		# led[1] = 0
 	beq x0, x0, FAIL	# 失败时会在此处死循环
 	
-TEST1:	# add test	
-	addi gp, x0, 1		# gp = 1
+# add test	
+TEST1:	addi gp, x0, 1		# gp = 1
 	addi x5, x0, 2		# x5 = 2
 	addi x5, x5, 2		# x5 = 4
 	add x6, x5, x5		# x6 = 8
@@ -43,8 +42,8 @@ TEST1:	# add test
 	beq x6, x7, TEST2
 	beq x0, x0, FAIL
 	
-TEST2:	# add test II	
-	addi gp, x0, 2		# gp = 2
+# add test II	
+TEST2:	addi gp, x0, 2		# gp = 2
 	addi x8, x0, 9 		# x8 = 9
 	add x9, x8, x0		# x9 = 9
 	addi x10, x0, -9	# x10 = 0xfffffff7
@@ -52,8 +51,8 @@ TEST2:	# add test II
 	beq x10, x0, TEST3
 	beq x0, x0, FAIL
 	
-TEST3:	# lui test	
-	addi gp, x0, 3		# gp = 3 
+# lui test	
+TEST3:	addi gp, x0, 3		# gp = 3 
 	lui x5, 3		# x5 = 0x3000
 	lui x6, -2		# x6 = 0xfffffe000
 	addi x7, x0, 0x400	# x7 = 0x0400
@@ -63,8 +62,8 @@ TEST3:	# lui test
 	beq x5, x7, TEST4
 	beq x0, x0, FAIL
 	
-TEST4:	# auipc test	
-	addi gp, x0, 4		# gp = 4
+# auipc test	
+TEST4:	addi gp, x0, 4		# gp = 4
 	auipc x5, 3		# x5 = 0x609c
 	auipc x6, -4		# x6 = 0xfffff0a0
 	add x7, x5, x6		# x7 = 0x513c
@@ -73,8 +72,8 @@ TEST4:	# auipc test
 	beq x7, x8, TEST5
 	beq x0, x0, FAIL
 	
-TEST5:	# lw sw test	
-	addi gp, x0, 5		# gp = 5
+# lw sw test	
+TEST5:	addi gp, x0, 5		# gp = 5
 	lui x5, 0x12345		# x5 = 0x12345000
 	addi x5, x5, 0x789	# x5 = 0x12345789
 	sw x5, 40(x0)
@@ -83,8 +82,8 @@ TEST5:	# lw sw test
 	beq x5, x7, TEST6
 	beq x0, x0, FAIL
 	
-TEST6:	# x0 test	
-	addi gp, x0, 6		# gp = 6
+# x0 test	
+TEST6:	addi gp, x0, 6		# gp = 6
 	addi x5, x0, 3		# x5 = 3
 	addi x0, x0, 3
 	beq x0, x5, FAIL
@@ -98,8 +97,8 @@ TEST6:	# x0 test
 	beq x1, x5, TEST7
 	beq x0, x0, FAIL
 	
-TEST7:	# lw sw test II	
-	addi gp, x0, 7		# gp = 7
+# lw sw test II	
+TEST7:	addi gp, x0, 7		# gp = 7
 	addi x10, x0, 12	# x10 = 0x0c
 	sw x10, 4(x10)
 	addi x8, x0, 16		# x8 = 0x10
@@ -107,8 +106,8 @@ TEST7:	# lw sw test II
 	beq x8, x10, TEST8
 	beq x0, x0, FAIL
 	
-TEST8:	# blt test	
-	addi gp, x0, 8		# gp = 8
+# blt test	
+TEST8:	addi gp, x0, 8		# gp = 8
 	addi x5, x0, 1		# x5 = 1
 	addi, x6, x0, 2		# x6 = 2
 	addi x28, x0, 1 	# x28 = 1 可通过x28确定哪个分测试时失败
@@ -129,8 +128,8 @@ TEST8:	# blt test
 	blt x7, x5, TEST9
 	beq x0, x0, FAIL
 	
-TEST9:	# jal test	
-	addi gp, x0, 9		# gp = 9
+# jal test	
+TEST9:	addi gp, x0, 9		# gp = 9
 	addi x5, x0, 0		# x5 = 0
 L0:	jal x0, L2
 	beq x0, x0, FAIL	
@@ -146,8 +145,8 @@ L4:	auipc x6, 0		# x6 = 0x31a4
 	beq x5, x6, TEST10
 	beq x0, x0, FAIL
 	
-TEST10:	# jalr test	
-	addi gp, x0, 10		# gp = 0x0a
+# jalr test	
+TEST10:	addi gp, x0, 10		# gp = 0x0a
 	jal x1, L5		
 	beq x0, x0, FAIL
 	jalr x0, x12, 8
@@ -160,8 +159,8 @@ L5:	jalr x12, x1, 4
 	jalr x0, x6, 0
 	beq x0, x0, FAIL	
 
-FINAL:	# final test	
-	addi gp, x0, 11		# gp = 0x0b
+# final test	
+FINAL:	addi gp, x0, 11		# gp = 0x0b
 	addi x8, x0, 100	# x8 = 100
 	addi x5, x0, 0		# x5 = 0
 	addi x30, x30, 0	# x30 = 0
@@ -188,8 +187,8 @@ COUNT:	add x11, x10, x10
 	beq x27, x30, WIN
 	beq x0, x0, FAIL
 
-WIN:	
-	lui x7 7
+
+WIN:	lui x7 7
 	addi x7 x7 0x700
 	addi x7 x7 0x700
 	addi x7 x7 0x100	# x7 = 7f00
