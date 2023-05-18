@@ -34,7 +34,7 @@ module Check_Data_SEG_SEL (
     always @(*) begin
         check_data = 0;     // Default value
 
-        case (check_addr):
+        case (check_addr)
             3'd0: check_data = check_data_if;
             3'd1: check_data = check_data_id;
             3'd2: check_data = check_data_ex;
