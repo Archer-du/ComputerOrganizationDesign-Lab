@@ -1,4 +1,4 @@
-# win: 0x3150 ~ 0x3168
+# win: 0x3150 ~ 0x316c
 .text
 TEST0:	# bne test
 	addi gp, x0, 0		# gp = 0 检测addi实现与x0设为0
