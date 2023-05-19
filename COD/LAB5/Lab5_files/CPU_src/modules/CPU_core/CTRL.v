@@ -1,12 +1,14 @@
 module CTRL(
     input [31:0] inst,
 
-    output reg jal, jalr,
-    output reg [2:0] br_type,
-    output reg wb_en,
+    output reg rf_re0,
+    output reg rf_re1,
     output reg [1:0] wb_sel,
+    output reg wb_en,
     output reg alu_op1_sel, alu_op2_sel,
     output reg [3:0] alu_ctrl,
+    output reg jal, jalr,
+    output reg [2:0] br_type,
     //output [2:0] imm_type,
     output reg mem_we
 );
@@ -59,6 +61,8 @@ module CTRL(
                 alu_op1_sel = RS1;
                 alu_op2_sel = RS2;
                 mem_we = 0;
+                rf_re0 = 1;
+                rf_re1 = 1;
                 case(inst[14:12])
                     3'b000: begin
                         if(inst[30]) alu_ctrl = SUB;
@@ -81,6 +85,8 @@ module CTRL(
                 alu_op1_sel = RS1;
                 alu_op2_sel = IMMGEN;
                 mem_we = 0;
+                rf_re0 = 1;
+                rf_re1 = 0;
                 case(inst[14:12])
                     3'b000: alu_ctrl = ADD;
                     3'b001: alu_ctrl = SLL;
@@ -100,6 +106,8 @@ module CTRL(
                 alu_op2_sel = IMMGEN;
                 alu_ctrl = 4'b0000;
                 mem_we = 1;
+                rf_re0 = 1;
+                rf_re1 = 1;
             end
             B_type: begin
                 jal = 0;
@@ -109,6 +117,8 @@ module CTRL(
                 alu_op2_sel = IMMGEN;
                 alu_ctrl = 4'b0000;
                 mem_we = 0;
+                rf_re0 = 1;
+                rf_re1 = 1;
                 case(inst[14:12])
                     3'b000: br_type = BEQ;
                     3'b001: br_type = BNE;
@@ -128,6 +138,8 @@ module CTRL(
                 alu_op2_sel = IMMGEN;
                 alu_ctrl = 4'b0000;
                 mem_we = 0;
+                rf_re0 = 1;
+                rf_re1 = 0;
             end
             U_type_auipc: begin
                 jal = 0;
@@ -139,6 +151,8 @@ module CTRL(
                 alu_op2_sel = IMMGEN;
                 alu_ctrl = 4'b0000;
                 mem_we = 0;
+                rf_re0 = 0;
+                rf_re1 = 0;
             end
             U_type_lui: begin
                 jal = 0;
@@ -148,6 +162,8 @@ module CTRL(
                 wb_sel = IMM;
                 alu_ctrl = 4'b1111;
                 mem_we = 0;
+                rf_re0 = 0;
+                rf_re1 = 0;
             end
             J_type: begin
                 jal = 1;
@@ -159,6 +175,8 @@ module CTRL(
                 alu_op2_sel = IMMGEN;
                 alu_ctrl = 4'b0000;
                 mem_we = 0;
+                rf_re0 = 0;
+                rf_re1 = 0;
             end
             JALR: begin
                 jal = 0;
@@ -170,8 +188,10 @@ module CTRL(
                 alu_op2_sel = IMMGEN;
                 alu_ctrl = 4'b0000;
                 mem_we = 0;
+                rf_re0 = 1;
+                rf_re1 = 0;
             end
-            default: begin
+            default: begin//nop--TODO:
                 jal = 0;
                 jalr = 0;
                 br_type = NONE_BR;
@@ -180,6 +200,8 @@ module CTRL(
                 alu_op2_sel = RS2;
                 alu_ctrl = 4'b1111;
                 mem_we = 0;
+                rf_re0 = 1;
+                rf_re1 = 1;
             end
         endcase
     end

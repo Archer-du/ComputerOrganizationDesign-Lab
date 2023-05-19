@@ -17,7 +17,21 @@ module MEM(
     output [31:0] mem_check_data
 );
    
-   // TODO: Your IP here.
-   // Remember that we need [9:2]?
+   Inst_MEM IM(
+    .im_addr(im_addr),
+    .im_dout(im_dout)
+   );
+
+   Data_MEM DM(
+    .clk(clk),
+    .we(dm_we),
+    
+    .dm_addr(dm_addr),
+    .dm_din(dm_din),
+    .dm_dout(dm_dout),
+
+    .mem_check_addr(mem_check_addr),
+    .mem_check_data(mem_check_data)
+   );
 
 endmodule

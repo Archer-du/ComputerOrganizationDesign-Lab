@@ -32,11 +32,14 @@ module RF
     always@(posedge clk)begin
         regfile[0] <= 0;
         if(we)begin
-            if(wa != 0)
-            regfile[wa] <= wd;
+            if(wa != 0) begin
+                regfile[wa] <= wd;
+            end
         end
     end
 
-    assign rd0 = regfile[ra0],rd1 = regfile[ra1];
-    assign rd_dbg = regfile[ra_dbg];
+    assign rd0 = (wa == ra0 && wa != 0)? wd: regfile[ra0];
+    assign rd1 = (wa == ra1 && wa != 0)? wd: regfile[ra1];
+
+    assign rd_dbg = (wa == ra_dbg && wa != 0)? wd: regfile[ra_dbg];
 endmodule
