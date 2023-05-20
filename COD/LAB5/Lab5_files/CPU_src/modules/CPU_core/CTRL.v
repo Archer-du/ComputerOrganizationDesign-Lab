@@ -3,8 +3,8 @@ module CTRL(
 
     output reg rf_re0,
     output reg rf_re1,
-    output reg [1:0] wb_sel,
     output reg wb_en,
+    output reg [1:0] wb_sel,
     output reg alu_op1_sel, alu_op2_sel,
     output reg [3:0] alu_ctrl,
     output reg jal, jalr,
@@ -102,6 +102,7 @@ module CTRL(
                 jalr = 0;
                 br_type = NONE_BR;
                 wb_en = 0;
+                wb_sel = 2'b00;
                 alu_op1_sel = RS1;
                 alu_op2_sel = IMMGEN;
                 alu_ctrl = 4'b0000;
@@ -113,6 +114,7 @@ module CTRL(
                 jal = 0;
                 jalr = 0;
                 wb_en = 0;
+                wb_sel = 2'b00;
                 alu_op1_sel = PC_CUR;
                 alu_op2_sel = IMMGEN;
                 alu_ctrl = 4'b0000;
@@ -160,6 +162,8 @@ module CTRL(
                 br_type = NONE_BR;
                 wb_en = 1;
                 wb_sel = IMM;
+                alu_op1_sel = 1'b0;
+                alu_op2_sel = 1'b0;
                 alu_ctrl = 4'b1111;
                 mem_we = 0;
                 rf_re0 = 0;
@@ -191,17 +195,18 @@ module CTRL(
                 rf_re0 = 1;
                 rf_re1 = 0;
             end
-            default: begin//nop--TODO:
+            default: begin//nop
                 jal = 0;
                 jalr = 0;
                 br_type = NONE_BR;
                 wb_en = 0;
+                wb_sel = 2'b00;
                 alu_op1_sel = RS1;
                 alu_op2_sel = RS2;
                 alu_ctrl = 4'b1111;
                 mem_we = 0;
-                rf_re0 = 1;
-                rf_re1 = 1;
+                rf_re0 = 0;
+                rf_re1 = 0;
             end
         endcase
     end

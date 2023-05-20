@@ -38,8 +38,8 @@ module RF
         end
     end
 
-    assign rd0 = (wa == ra0 && wa != 0)? wd: regfile[ra0];
-    assign rd1 = (wa == ra1 && wa != 0)? wd: regfile[ra1];
+    assign rd0 = (we && wa == ra0 && wa != 0)? wd: regfile[ra0];
+    assign rd1 = (we && wa == ra1 && wa != 0)? wd: regfile[ra1];
 
-    assign rd_dbg = (wa == ra_dbg && wa != 0)? wd: regfile[ra_dbg];
+    assign rd_dbg = (we && wa == ra_dbg && wa != 0)? wd: regfile[ra_dbg];
 endmodule

@@ -131,7 +131,7 @@ module CPU(
     wire jalr_mem;
     wire [2:0] br_type_mem;
     wire br_mem;
-    wire [31:0] pc_next;//TODO:
+    wire [31:0] pc_next;
     wire [31:0] pc_next_mem;
     wire [31:0] dm_addr_mem;
     wire [31:0] dm_din_mem;
@@ -597,7 +597,8 @@ module CPU(
     Hazard Hazard(
         .rf_ra0_ex(rf_ra0_ex),
         .rf_ra1_ex(rf_ra1_ex),
-        //TODO:
+        .rf_re0_ex(rf_re0_ex),
+        .rf_re1_ex(rf_re1_ex),
         .rf_we_mem(rf_we_mem),
         .rf_wa_mem(rf_wa_mem),
         .rf_wd_sel_mem(rf_wd_sel_mem),
@@ -673,7 +674,7 @@ module CPU(
         .pc_br(32'h0),
         .pc_jal(32'h0),
         .pc_jalr(32'h0),
-        .pc_sel(),//TODO:
+        .pc_sel(2'h0),
         .pc_next(32'h0),
         .dm_addr(32'h0),
         .dm_din(32'h0),
@@ -711,7 +712,7 @@ module CPU(
         .pc_br(32'h0),
         .pc_jal(32'h0),
         .pc_jalr(32'h0),
-        .pc_sel(),
+        .pc_sel(2'h0),
         .pc_next(32'h0),
         .dm_addr(32'h0),
         .dm_din(32'h0),
@@ -749,7 +750,7 @@ module CPU(
         .pc_br(alu_ans_ex),
         .pc_jal(alu_ans_ex),
         .pc_jalr(pc_jalr_ex),
-
+        .pc_sel(jal_ex || jalr_ex || br_ex),
         .pc_next(pc_next),
         .dm_addr(alu_ans_ex),
         .dm_din(rf_rd1_ex),
@@ -787,7 +788,7 @@ module CPU(
         .pc_br(pc_br_mem),
         .pc_jal(pc_jal_mem),
         .pc_jalr(pc_jalr_mem),
-
+        .pc_sel(jal_mem || jalr_mem || br_mem),
         .pc_next(pc_next_mem),
         .dm_addr(dm_addr_mem),
         .dm_din(dm_din_mem),
@@ -825,7 +826,7 @@ module CPU(
         .pc_br(pc_br_wb),
         .pc_jal(pc_jal_wb),
         .pc_jalr(pc_jalr_wb),
-
+        .pc_sel(jal_wb || jalr_wb || br_wb),
         .pc_next(pc_next_wb),
         .dm_addr(dm_addr_wb),
         .dm_din(dm_din_wb),
@@ -840,6 +841,7 @@ module CPU(
         .rf_ra0_ex(rf_ra0_ex),
         .rf_ra1_ex(rf_ra1_ex),
         //TODO:
+        .pc_sel_ex(jal_ex || jalr_ex || br_ex),
         .rf_we_mem(rf_we_mem),
         .rf_wa_mem(rf_wa_mem),
         .rf_wd_sel_mem(rf_wd_sel_mem),

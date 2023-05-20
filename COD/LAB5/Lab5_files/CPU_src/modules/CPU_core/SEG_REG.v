@@ -67,10 +67,10 @@ module SEG_REG(
     output reg [31:0] pc_next_out,
 
     input [31:0] dm_addr_in,
-    input [31:0] dm_din_in,
-    input [31:0] dm_dout_in,
     output reg [31:0] dm_addr_out,
+    input [31:0] dm_din_in,
     output reg [31:0] dm_din_out,
+    input [31:0] dm_dout_in,
     output reg [31:0] dm_dout_out,
     input dm_we_in,
     output reg dm_we_out,
@@ -79,11 +79,81 @@ module SEG_REG(
     input flush,            //add bubbles
     input stall             //stall
 );
+    localparam NONE_BR = 3'b000;
+
+    initial begin
+        pc_cur_out <= 32'h0;
+        inst_out <= 32'h0;
+        rf_ra0_out <= 5'h0;
+        rf_ra1_out <= 5'h0;
+        rf_re0_out <= 1'h0;
+        rf_re1_out <= 1'h0;
+        rf_rd0_raw_out <= 32'h0;
+        rf_rd1_raw_out <= 32'h0;
+        rf_rd0_out <= 32'h0;
+        rf_rd1_out <= 32'h0;
+        rf_wa_out <= 5'h0;
+        rf_wd_sel_out <= 2'h0;
+        rf_we_out <= 1'h0;
+        imm_out <= 32'h0;
+        alu_src1_sel_out <= 1'h0;
+        alu_src2_sel_out <= 1'h0;
+        alu_src1_out <= 32'h0;
+        alu_src2_out <= 32'h0;
+        alu_func_out <= 4'hf;
+        alu_ans_out <= 32'h0;
+        pc_add4_out <= 32'h3000;
+        pc_br_out <= 32'h0;
+        pc_jal_out <= 32'h0;
+        pc_jalr_out <= 32'h0;
+        jal_out <= 1'h0;
+        jalr_out <= 1'h0;
+        br_type_out <= NONE_BR;
+        br_out <= 1'h0;
+        pc_next_out <= 32'h0;
+        dm_addr_out <= 32'h0;
+        dm_din_out <= 32'h0;
+        dm_dout_out <= 32'h0;
+        dm_we_out <= 1'h0;
+    end
+
     always@(posedge clk) begin
         if(!stall) begin
             if(flush) begin //synchronize reset
-                //TODO:
                 //pc initialize require
+                pc_cur_out <= 32'h0;
+                inst_out <= 32'h0;
+                rf_ra0_out <= 5'h0;
+                rf_ra1_out <= 5'h0;
+                rf_re0_out <= 1'h0;
+                rf_re1_out <= 1'h0;
+                rf_rd0_raw_out <= 32'h0;
+                rf_rd1_raw_out <= 32'h0;
+                rf_rd0_out <= 32'h0;
+                rf_rd1_out <= 32'h0;
+                rf_wa_out <= 5'h0;
+                rf_wd_sel_out <= 2'h0;
+                rf_we_out <= 1'h0;
+                imm_out <= 32'h0;
+                alu_src1_sel_out <= 1'h0;
+                alu_src2_sel_out <= 1'h0;
+                alu_src1_out <= 32'h0;
+                alu_src2_out <= 32'h0;
+                alu_func_out <= 4'hf;
+                alu_ans_out <= 32'h0;
+                pc_add4_out <= 32'h3000;
+                pc_br_out <= 32'h0;
+                pc_jal_out <= 32'h0;
+                pc_jalr_out <= 32'h0;
+                jal_out <= 1'h0;
+                jalr_out <= 1'h0;
+                br_type_out <= NONE_BR;
+                br_out <= 1'h0;
+                pc_next_out <= 32'h0;
+                dm_addr_out <= 32'h0;
+                dm_din_out <= 32'h0;
+                dm_dout_out <= 32'h0;
+                dm_we_out <= 1'h0;
             end
             else begin
                 pc_cur_out <= pc_cur_in;

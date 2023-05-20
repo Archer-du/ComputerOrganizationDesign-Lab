@@ -19,7 +19,6 @@ module MUX_RFwrite(
             PC_ADD4:    wb_data = pc_add4;
             MEM_RD:     wb_data = mem_rd;
             IMM:        wb_data = imm;
-            default:    wb_data = 31'b0;//TODO:
         endcase
     end
 endmodule

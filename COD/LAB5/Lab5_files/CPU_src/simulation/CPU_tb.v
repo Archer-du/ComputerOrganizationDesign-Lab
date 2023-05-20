@@ -58,7 +58,8 @@ module CPU_tb();
 
     initial begin
         cpu_clk = 0;
-        cpu_rst = 1;
+        cpu_rst = 0;
+        #2 cpu_rst = 1;
 
         #20 cpu_rst = 0;
     end
