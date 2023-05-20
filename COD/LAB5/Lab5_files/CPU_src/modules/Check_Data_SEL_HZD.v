@@ -40,8 +40,8 @@
 */
 
 module Check_Data_SEL_HZD (
-    input [31:0]            rf_ra0_ex,
-    input [31:0]            rf_ra1_ex,
+    input [4:0]            rf_ra0_ex,
+    input [4:0]            rf_ra1_ex,
     input                   rf_re0_ex,
     input                   rf_re1_ex,
     input [1:0]             pc_sel_ex,

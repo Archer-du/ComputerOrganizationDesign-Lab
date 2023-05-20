@@ -21,7 +21,7 @@ module CPU(
     output [31:0] current_pc, 	        // Current_pc, pc_out
     output [31:0] next_pc,              // Next_pc, pc_in    
     input [31:0] cpu_check_addr,	    // Check current datapath state (code)
-    output reg [31:0] cpu_check_data    // Current datapath state data
+    output [31:0] cpu_check_data    // Current datapath state data
 );
 //  IF wires
     wire [31:0] inst;
@@ -634,7 +634,263 @@ module CPU(
 
     //debug segment
 
+    wire [2:0] check_addr;
+
+    wire [31:0] check_data_if;
+    wire [31:0] check_data_id;
+    wire [31:0] check_data_ex;
+    wire [31:0] check_data_mem;
+    wire [31:0] check_data_wb;
+    wire [31:0] check_data_hzd;
+
+    wire [31:0] check_data;
+    wire [31:0] cpu_check_data_res;
+
+    Check_Data_SEL IF_Check_Data_SEL(
+        .pc_cur(pc_cur_if),
+        .instruction(inst),
+
+        .rf_ra0(inst[19:15]),
+        .rf_ra1(inst[24:20]),
+        .rf_re0(1'h0),
+        .rf_re1(1'h0),
+        .rf_rd0_raw(32'h0),
+        .rf_rd1_raw(32'h0),
+        .rf_rd0(32'h0),
+        .rf_rd1(32'h0),
+        .rf_wa(inst[11:7]),
+        .rf_wd_sel(2'h0),
+        .rf_we(1'h0),
+
+        .immediate(32'h0),
+
+        .alu_src1(32'h0),
+        .alu_src2(32'h0),
+        .alu_func(4'hf),
+        .alu_ans(32'h0),
+
+        .pc_add4(pc_add4_if),
+        .pc_br(32'h0),
+        .pc_jal(32'h0),
+        .pc_jalr(32'h0),
+        .pc_sel(),//TODO:
+        .pc_next(32'h0),
+        .dm_addr(32'h0),
+        .dm_din(32'h0),
+        .dm_dout(32'h0),
+        .dm_we(1'h0),
+
+        .check_addr(cpu_check_addr[4:0]),
+        .check_data(check_data_if)
+    );
+
+    Check_Data_SEL ID_Check_Data_SEL(
+        .pc_cur(pc_cur_id),
+        .instruction(inst_id),
+
+        .rf_ra0(rf_ra0_id),
+        .rf_ra1(rf_ra1_id),
+        .rf_re0(rf_re0_id),
+        .rf_re1(rf_re1_id),
+        .rf_rd0_raw(rf_rd0_raw_id),
+        .rf_rd1_raw(rf_rd1_raw_id),
+        .rf_rd0(32'h0),
+        .rf_rd1(32'h0),
+        .rf_wa(rf_wa_id),
+        .rf_wd_sel(rf_wd_sel_id),
+        .rf_we(rf_we_id),
+
+        .immediate(imm_id),
+
+        .alu_src1(32'h0),
+        .alu_src2(32'h0),
+        .alu_func(alu_func_id),
+        .alu_ans(32'h0),
+
+        .pc_add4(pc_add4_id),
+        .pc_br(32'h0),
+        .pc_jal(32'h0),
+        .pc_jalr(32'h0),
+        .pc_sel(),
+        .pc_next(32'h0),
+        .dm_addr(32'h0),
+        .dm_din(32'h0),
+        .dm_dout(32'h0),
+        .dm_we(dm_we_id),
+
+        .check_addr(cpu_check_addr[4:0]),
+        .check_data(check_data_id)
+    );
+
+    Check_Data_SEL EX_Check_Data_SEL(
+        .pc_cur(pc_cur_ex),
+        .instruction(inst_ex),
+
+        .rf_ra0(rf_ra0_ex),
+        .rf_ra1(rf_ra1_ex),
+        .rf_re0(rf_re0_ex),
+        .rf_re1(rf_re1_ex),
+        .rf_rd0_raw(rf_rd0_raw_ex),
+        .rf_rd1_raw(rf_rd1_raw_ex),
+        .rf_rd0(rf_rd0_ex),
+        .rf_rd1(rf_rd1_ex),
+        .rf_wa(rf_wa_ex),
+        .rf_wd_sel(rf_wd_sel_ex),
+        .rf_we(rf_we_ex),
+
+        .immediate(imm_ex),
+
+        .alu_src1(alu_src1_ex),
+        .alu_src2(alu_src2_ex),
+        .alu_func(alu_func_ex),
+        .alu_ans(alu_ans_ex),
+
+        .pc_add4(pc_add4_ex),
+        .pc_br(alu_ans_ex),
+        .pc_jal(alu_ans_ex),
+        .pc_jalr(pc_jalr_ex),
+
+        .pc_next(pc_next),
+        .dm_addr(alu_ans_ex),
+        .dm_din(rf_rd1_ex),
+        .dm_dout(32'h0),
+        .dm_we(dm_we_ex),
+
+        .check_addr(cpu_check_addr[4:0]),
+        .check_data(check_data_ex)
+    );
+
+    Check_Data_SEL MEM_Check_Data_SEL(
+        .pc_cur(pc_cur_mem),
+        .instruction(inst_mem),
+
+        .rf_ra0(rf_ra0_mem),
+        .rf_ra1(rf_ra1_mem),
+        .rf_re0(rf_re0_mem),
+        .rf_re1(rf_re1_mem),
+        .rf_rd0_raw(rf_rd0_raw_mem),
+        .rf_rd1_raw(rf_rd1_raw_mem),
+        .rf_rd0(rf_rd0_mem),
+        .rf_rd1(rf_rd1_mem),
+        .rf_wa(rf_wa_mem),
+        .rf_wd_sel(rf_wd_sel_mem),
+        .rf_we(rf_we_mem),
+
+        .immediate(imm_mem),
+
+        .alu_src1(alu_src1_mem),
+        .alu_src2(alu_src2_mem),
+        .alu_func(alu_func_mem),
+        .alu_ans(alu_ans_mem),
+
+        .pc_add4(pc_add4_mem),
+        .pc_br(pc_br_mem),
+        .pc_jal(pc_jal_mem),
+        .pc_jalr(pc_jalr_mem),
+
+        .pc_next(pc_next_mem),
+        .dm_addr(dm_addr_mem),
+        .dm_din(dm_din_mem),
+        .dm_dout(dm_dout),
+        .dm_we(dm_we_mem),
+
+        .check_addr(cpu_check_addr[4:0]),
+        .check_data(check_data_mem)
+    );
+
+    Check_Data_SEL WB_Check_Data_SEL(
+        .pc_cur(pc_cur_wb),
+        .instruction(inst_wb),
+
+        .rf_ra0(rf_ra0_wb),
+        .rf_ra1(rf_ra1_wb),
+        .rf_re0(rf_re0_wb),
+        .rf_re1(rf_re1_wb),
+        .rf_rd0_raw(rf_rd0_raw_wb),
+        .rf_rd1_raw(rf_rd1_raw_wb),
+        .rf_rd0(rf_rd0_wb),
+        .rf_rd1(rf_rd1_wb),
+        .rf_wa(rf_wa_wb),
+        .rf_wd_sel(rf_wd_sel_wb),
+        .rf_we(rf_we_wb),
+
+        .immediate(imm_wb),
+
+        .alu_src1(alu_src1_wb),
+        .alu_src2(alu_src2_wb),
+        .alu_func(alu_func_wb),
+        .alu_ans(alu_ans_wb),
+
+        .pc_add4(pc_add4_wb),
+        .pc_br(pc_br_wb),
+        .pc_jal(pc_jal_wb),
+        .pc_jalr(pc_jalr_wb),
+
+        .pc_next(pc_next_wb),
+        .dm_addr(dm_addr_wb),
+        .dm_din(dm_din_wb),
+        .dm_dout(dm_dout_wb),
+        .dm_we(dm_we_wb),
+
+        .check_addr(cpu_check_addr[4:0]),
+        .check_data(check_data_wb)
+    );
+
+    Check_Data_SEL_HZD Check_Data_SEL_HZD(
+        .rf_ra0_ex(rf_ra0_ex),
+        .rf_ra1_ex(rf_ra1_ex),
+        //TODO:
+        .rf_we_mem(rf_we_mem),
+        .rf_wa_mem(rf_wa_mem),
+        .rf_wd_sel_mem(rf_wd_sel_mem),
+        .alu_ans_mem(alu_ans_mem),
+        .pc_add4_mem(pc_add4_mem),
+        .imm_mem(imm_mem),
+        .rf_we_wb(rf_we_wb),
+        .rf_wa_wb(rf_wa_wb),
+        .rf_wd_wb(rf_wd_wb),
+
+        .rf_rd0_fe(rf_rd0_fe),
+        .rf_rd1_fe(rf_rd1_fe),
+        .rf_rd0_fd(rf_rd0_fd),
+        .rf_rd1_fd(rf_rd1_fd),
+
+        .stall_if(stall_if),
+        .stall_id(stall_id),
+        .stall_ex(stall_ex),
+        .flush_id(flush_id),
+        .flush_ex(flush_ex),
+        .flush_mem(flush_mem),
+
+        .check_addr(cpu_check_addr[4:0]),
+        .check_data(check_data_hzd)
+    );
+
+    Check_Data_SEG_SEL Check_Data_SEG_SEL(
+        //control
+        .check_addr(cpu_check_addr[7:5]),
+
+        //input
+        .check_data_if(check_data_if),
+        .check_data_id(check_data_id),
+        .check_data_ex(check_data_ex),
+        .check_data_mem(check_data_mem),
+        .check_data_wb(check_data_wb),
+        .check_data_hzd(check_data_hzd),
+
+        //output
+        .check_data(check_data)
+    );
+
+    MUX Check_Data_MUX(
+        .sel(cpu_check_addr[12]),
+        .src0(check_data),
+        .src1(rf_rd_dbg_id),
+        .res(cpu_check_data_res)
+    );
+
     assign current_pc = pc_cur_if;
     assign next_pc = pc_next;
+    assign cpu_check_data = cpu_check_data_res;
 
 endmodule

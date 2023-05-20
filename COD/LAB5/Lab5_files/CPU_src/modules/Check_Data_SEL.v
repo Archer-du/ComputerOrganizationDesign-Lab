@@ -22,8 +22,8 @@
         .rf_wd(),
         .rf_we(),
         .immediate(),
-        .alu_sr1(),
-        .alu_sr2(),
+        .alu_src1(),
+        .alu_src2(),
         .alu_func(),
         .alu_ans(),
         .pc_add4(),
@@ -58,8 +58,8 @@ module Check_Data_SEL (
     input [31:0]                rf_wd,
     input                       rf_we,
     input [31:0]                immediate,
-    input [31:0]                alu_sr1,
-    input [31:0]                alu_sr2,
+    input [31:0]                alu_src1,
+    input [31:0]                alu_src2,
     input [3:0]                 alu_func,
     input [31:0]                alu_ans,
     input [31:0]                pc_add4,
@@ -96,8 +96,8 @@ module Check_Data_SEL (
             5'd12: check_data = rf_wd;
             5'd13: check_data = rf_we;
             5'd14: check_data = immediate;
-            5'd15: check_data = alu_sr1;
-            5'd16: check_data = alu_sr2;
+            5'd15: check_data = alu_src1;
+            5'd16: check_data = alu_src2;
             5'd17: check_data = alu_func;
             5'd18: check_data = alu_ans;
             5'd19: check_data = pc_add4;
