@@ -82,7 +82,8 @@ module SEG_REG(
     always@(posedge clk) begin
         if(!stall) begin
             if(flush) begin //synchronize reset
-
+                //TODO:
+                //pc initialize require
             end
             else begin
                 pc_cur_out <= pc_cur_in;

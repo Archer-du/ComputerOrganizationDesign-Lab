@@ -436,7 +436,7 @@ module CPU(
         .jalr_in(jalr_ex),
         .br_type_in(br_type_ex),
         .br_in(br_ex),
-        .pc_next_in(pc_next),//TODO:
+        .pc_next_in(pc_next),
         .dm_addr_in(alu_ans_ex),
         .dm_din_in(rf_rd1_ex),//TODO:
         .dm_dout_in(32'h0),
@@ -567,27 +567,27 @@ module CPU(
     );
 
     MUX_RFwrite RF_writeback_MUX(
-        .sel(wb_sel),
-        .alu_res(alu_res),
-        .pc_add4(pc_add4),
-        .mem_rd(mem_dout),
-        .imm(imm),
-        .wb_data(wb_data)
+        .sel(rf_wd_sel_wb),
+        .alu_res(alu_ans_wb),
+        .pc_add4(pc_add4_wb),
+        .mem_rd(dm_dout_wb),
+        .imm(imm_wb),
+        .wb_data(rf_wd_wb)
     );
 
     //others
-
     MUX_PC PC_MUX(
-        .jal(jal),
-        .jalr(jalr),
-        .br(br),
-        .pc_add4(pc_add4),
-        .pc_jal_br(alu_res),
-        .pc_jalr(pc_jalr),
+        .jal(jal_ex),
+        .jalr(jalr_ex),
+        .br(br_ex),
+        .pc_add4(pc_add4_if),
+        .pc_jal_br(alu_ans_ex),
+        .pc_jalr(pc_jalr_ex),
         .pc_next(pc_next)
     );
 
     assign im_addr = pc_cur_if;
+    assign inst_raw = im_dout;
     assign mem_addr = alu_ans_mem;
     assign mem_din = dm_din_mem;
     assign mem_we = dm_we_mem;

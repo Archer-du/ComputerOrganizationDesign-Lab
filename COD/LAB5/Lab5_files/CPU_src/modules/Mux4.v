@@ -7,32 +7,32 @@
 // This is a simple 4-1 Mux.
 /* Ports
     Mux4 #(32) my_mux (
-        .mux_sr1(),
-        .mux_sr2(),
-        .mux_sr3(),
-        .mux_sr4(),
-        .mux_ctrl(),
+        .sr1(),
+        .sr2(),
+        .sr3(),
+        .sr4(),
+        .ctrl(),
 
-        .mux_out()
+        .out()
     );
 */
 
-module Mux2 #(WIDTH = 32) (
-    input [WIDTH-1: 0]          mux_sr1,
-    input [WIDTH-1: 0]          mux_sr2,
-    input [WIDTH-1: 0]          mux_sr3,
-    input [WIDTH-1: 0]          mux_sr4,
-    input [1:0]                 mux_ctrl,
+module MUX4 #(WIDTH = 32) (
+    input [WIDTH-1: 0]          sr1,
+    input [WIDTH-1: 0]          sr2,
+    input [WIDTH-1: 0]          sr3,
+    input [WIDTH-1: 0]          sr4,
+    input [1:0]                 ctrl,
 
-    output reg [WIDTH-1: 0]     mux_out
+    output reg [WIDTH-1: 0]     out
 );  
 
     always @(*) begin
-        case (mux_ctrl)
-            2'b00: mux_out = mux_sr1;
-            2'b01: mux_out = mux_sr2;
-            2'b10: mux_out = mux_sr3;
-            2'b11: mux_out = mux_sr4;
+        case (ctrl)
+            2'b00: out = sr1;
+            2'b01: out = sr2;
+            2'b10: out = sr3;
+            2'b11: out = sr4;
         endcase // We don't need default here
     end
 
