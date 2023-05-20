@@ -23,18 +23,19 @@ module CPU(
     input [31:0] cpu_check_addr,	    // Check current datapath state (code)
     output reg [31:0] cpu_check_data    // Current datapath state data
 );
-    wire [31:0] inst_raw;
-    wire [31:0] dm_dout;//TODO:
+//  IF wires
+    wire [31:0] inst;
+    wire [31:0] dm_dout;
 
     wire [31:0] pc_cur_if;
     wire [31:0] pc_add4_if;
-    wire [31:0] inst_if;
     wire stall_if;
-    wire flush_if;
 
+//  ID wires
     wire stall_id;
     wire flush_id;
     wire [31:0] pc_cur_id;
+    wire [31:0] inst_id;
     wire [4:0] rf_ra0_id;
     wire [4:0] rf_ra1_id;
     wire [4:0] rf_wa_id;
@@ -51,6 +52,9 @@ module CPU(
     wire rf_re1_id;
     wire [1:0] rf_wd_sel_id;
     wire rf_we_id;
+    
+    wire [31:0] imm_id;
+
     wire alu_src1_sel_id;
     wire alu_src2_sel_id;
     wire [3:0] alu_func_id;
@@ -59,6 +63,7 @@ module CPU(
     wire [2:0] br_type_id;
     wire dm_we_id;
 
+//  EX wires
     wire stall_ex;
     wire flush_ex;
     wire [31:0] pc_cur_ex;
@@ -75,6 +80,7 @@ module CPU(
     wire alu_src2_sel_ex;
     wire [3:0] alu_func_ex;
 
+    wire [31:0] pc_add4_ex;
     wire jal_ex;
     wire jalr_ex;
     wire [2:0] br_type_ex;
@@ -85,11 +91,14 @@ module CPU(
     wire [31:0] alu_src1_ex;
     wire [31:0] alu_src2_ex;
     wire [31:0] alu_ans_ex;
+    wire [31:0] rf_rd0_raw_ex;
+    wire [31:0] rf_rd1_raw_ex;
     wire [31:0] rf_rd0_ex;
     wire [31:0] rf_rd1_ex;
     wire br_ex;
     wire [31:0] pc_jalr_ex;
 
+//  MEM wires
     wire [31:0] pc_cur_mem;
     wire [31:0] inst_mem;
 
@@ -102,7 +111,7 @@ module CPU(
     wire [31:0] rf_rd0_mem;
     wire [31:0] rf_rd1_mem;
     wire [4:0] rf_wa_mem;
-    wire [31:0] rf_wd_sel_mem;
+    wire [1:0] rf_wd_sel_mem;
     wire rf_we_mem;
 
     wire [31:0] imm_mem;
@@ -123,10 +132,12 @@ module CPU(
     wire [2:0] br_type_mem;
     wire br_mem;
     wire [31:0] pc_next;//TODO:
+    wire [31:0] pc_next_mem;
     wire [31:0] dm_addr_mem;
     wire [31:0] dm_din_mem;
     wire dm_we_mem;
 
+//  WB wires
     wire [31:0] pc_cur_wb;
     wire [31:0] inst_wb;
 
@@ -138,8 +149,7 @@ module CPU(
     wire [31:0] rf_rd1_raw_wb;
     wire [31:0] rf_rd0_wb;
     wire [31:0] rf_rd1_wb;
-    wire [4:0] rf_wa_wb;
-    wire [31:0] rf_wd_sel_wb;
+    wire [1:0] rf_wd_sel_wb;
     wire rf_we_wb;
 
     wire [31:0] imm_wb;
@@ -165,6 +175,9 @@ module CPU(
     wire [31:0] dm_dout_wb;
     wire dm_we_wb;
 
+    wire [31:0] rf_rd0_fd;
+    wire [31:0] rf_rd1_fd;
+
     //IF segment
     PC PC(
         .pc_next(pc_next),
@@ -181,30 +194,23 @@ module CPU(
         .res(pc_add4_if)
     );
 
-    MUX inst_flush(
-        .sel(flush_if),
-        .src0(inst_raw),
-        .src1(32'h00000033),
-        .res(inst_if)
-    );
-
     SEG_REG IF_ID(
         .clk(clk),
         .stall(stall_id),
-        .flush(flush_id),//TODO:
+        .flush(flush_id),
 
         .pc_cur_in(pc_cur_if),
-        .inst_in(inst_if),
+        .inst_in(inst),
 
-        .rf_ra0_in(inst_if[19:15]),
-        .rf_ra1_in(inst_if[24:20]),
+        .rf_ra0_in(inst[19:15]),
+        .rf_ra1_in(inst[24:20]),
         .rf_re0_in(1'h0),
         .rf_re1_in(1'h0),
         .rf_rd0_raw_in(32'h0),
         .rf_rd1_raw_in(32'h0),
         .rf_rd0_in(32'h0),
         .rf_rd1_in(32'h0),
-        .rf_wa_in(inst_if[11:7]),
+        .rf_wa_in(inst[11:7]),
         .rf_wd_sel_in(2'h0),
         .rf_we_in(1'h0),
 
@@ -214,7 +220,7 @@ module CPU(
         .alu_src2_sel_in(1'h0),
         .alu_src1_in(32'h0),
         .alu_src2_in(32'h0),
-        .alu_func_in(4'hf),//TODO:
+        .alu_func_in(4'hf),
         .alu_ans_in(32'h0),
 
         .pc_add4_in(pc_add4_if),
@@ -231,6 +237,7 @@ module CPU(
         .dm_dout_in(32'h0),
         .dm_we_in(1'h0),
 
+        //output
         .pc_cur_out(pc_cur_id),
         .inst_out(inst_id),
         .rf_ra0_out(rf_ra0_id),
@@ -242,7 +249,7 @@ module CPU(
     //ID segment
     RF RF(
         .clk(clk),
-        .we(wb_en),
+        .we(rf_we_wb),
 
         .ra0(rf_ra0_id),
         .ra1(rf_ra1_id),
@@ -317,7 +324,7 @@ module CPU(
         .br_in(1'h0),
         .pc_next_in(32'h0),
         .dm_addr_in(32'h0),
-        .dm_din_in(),//TODO:
+        .dm_din_in(32'h0),//TODO:
         .dm_dout_in(32'h0),
         .dm_we_in(dm_we_id),
 
@@ -341,11 +348,12 @@ module CPU(
         .alu_src2_sel_out(alu_src2_sel_ex),
         .alu_func_out(alu_func_ex),
 
+        .pc_add4_out(pc_add4_ex),
+
         .jal_out(jal_ex),
         .jalr_out(jalr_ex),
         .br_type_out(br_type_ex),
 
-        .dm_din_out(dm_din_ex),
         .dm_we_out(dm_we_ex)
     );
 
@@ -372,16 +380,16 @@ module CPU(
     );
 
     MUX RD_MUX1(
-        .sel(),//TODO:
+        .sel(rf_rd0_fe),
         .src0(rf_rd0_raw_ex),
-        .src1(),//TODO:
+        .src1(rf_rd0_fd),
         .res(rf_rd0_ex)
     );
 
-        MUX RD_MUX2(
-        .sel(),//TODO:
+    MUX RD_MUX2(
+        .sel(rf_rd1_fe),
         .src0(rf_rd1_raw_ex),
-        .src1(),//TODO:
+        .src1(rf_rd1_fd),
         .res(rf_rd1_ex)
     );
 
@@ -390,6 +398,16 @@ module CPU(
         .op1(rf_rd0_ex),
         .op2(rf_rd1_ex),
         .br(br_ex)
+    );
+
+    MUX_PC PC_MUX(
+        .jal(jal_ex),
+        .jalr(jalr_ex),
+        .br(br_ex),
+        .pc_add4(pc_add4_if),
+        .pc_jal_br(alu_ans_ex),
+        .pc_jalr(pc_jalr_ex),
+        .pc_next(pc_next)
     );
 
     AND_jalr jalr_ANDgate(
@@ -438,9 +456,9 @@ module CPU(
         .br_in(br_ex),
         .pc_next_in(pc_next),
         .dm_addr_in(alu_ans_ex),
-        .dm_din_in(rf_rd1_ex),//TODO:
+        .dm_din_in(rf_rd1_ex),
         .dm_dout_in(32'h0),
-        .dm_we_in(dm_we_ex),//TODO:
+        .dm_we_in(dm_we_ex),
 
         //output
         .pc_cur_out(pc_cur_mem),
@@ -575,25 +593,48 @@ module CPU(
         .wb_data(rf_wd_wb)
     );
 
-    //others
-    MUX_PC PC_MUX(
-        .jal(jal_ex),
-        .jalr(jalr_ex),
-        .br(br_ex),
-        .pc_add4(pc_add4_if),
-        .pc_jal_br(alu_ans_ex),
-        .pc_jalr(pc_jalr_ex),
-        .pc_next(pc_next)
+    //Hazard
+    Hazard Hazard(
+        .rf_ra0_ex(rf_ra0_ex),
+        .rf_ra1_ex(rf_ra1_ex),
+        //TODO:
+        .rf_we_mem(rf_we_mem),
+        .rf_wa_mem(rf_wa_mem),
+        .rf_wd_sel_mem(rf_wd_sel_mem),
+        .alu_ans_mem(alu_ans_mem),
+        .pc_add4_mem(pc_add4_mem),
+        .imm_mem(imm_mem),
+        .rf_we_wb(rf_we_wb),
+        .rf_wa_wb(rf_wa_wb),
+        .rf_wd_wb(rf_wd_wb),
+        .jal_ex(jal_ex),
+        .jalr_ex(jalr_ex),
+        .br_ex(br_ex),
+
+        .rf_rd0_fe(rf_rd0_fe),
+        .rf_rd1_fe(rf_rd1_fe),
+        .rf_rd0_fd(rf_rd0_fd),
+        .rf_rd1_fd(rf_rd1_fd),
+
+        .stall_if(stall_if),
+        .stall_id(stall_id),
+        .stall_ex(stall_ex),
+        .flush_id(flush_id),
+        .flush_ex(flush_ex),
+        .flush_mem(flush_mem)
     );
 
+    assign inst = im_dout;
+    assign dm_dout = mem_dout;
+
     assign im_addr = pc_cur_if;
-    assign inst_raw = im_dout;
     assign mem_addr = alu_ans_mem;
     assign mem_din = dm_din_mem;
     assign mem_we = dm_we_mem;
 
+    //debug segment
+
     assign current_pc = pc_cur_if;
     assign next_pc = pc_next;
-    //debug segment
 
 endmodule
