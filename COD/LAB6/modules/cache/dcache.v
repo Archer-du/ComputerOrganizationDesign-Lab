@@ -204,15 +204,15 @@ module dcache #(
     );
 
     /* hit */
-    // TODO:
-    assign tag          = address[31:32-TAG_WIDTH];     // the tag of the request
-    assign hit[0]       = 0;        // TODO
-    assign hit[1]       = 0;        // TODO
+    // FIXME:
+    assign tag          = req_buf[31:32-TAG_WIDTH]; // the tag of the request
+    assign hit[0]       = (tag == tag_rdata[0][TAG_WIDTH-1:0]) && tag_rdata[0][TAG_WIDTH];//TODO
+    assign hit[1]       = (tag == tag_rdata[1][TAG_WIDTH-1:0]) && tag_rdata[1][TAG_WIDTH];//TODO
+    assign hit_way      = hit[0] ? 0 : 1;           // only when cache_hit, hit_way is valid
     assign cache_hit    = |hit;
-    assign hit_way      = hit[0] ? 0 : 1;               // only when cache_hit, hit_way is valid
 
     /* write control */
-    assign wdata_pipe_512 = ({{(BIT_NUM-32){1'b0}}, wdata_pipe} << address[1:0]) << {address[BYTE_OFFSET_WIDTH-1:2], 5'b0};
+    assign wdata_pipe_512 = ({{(BIT_NUM-32){1'b0}}, wdata_pipe}) << {address[BYTE_OFFSET_WIDTH-1:2], 5'b0};
     assign wstrb_pipe_512 = {
             {(BIT_NUM-32){1'b0}}, ({{8{wstrb_pipe[3]}}, {8{wstrb_pipe[2]}}, {8{wstrb_pipe[1]}}, {8{wstrb_pipe[0]}}})
         } << {address[BYTE_OFFSET_WIDTH-1:2], 5'b0};
@@ -227,25 +227,84 @@ module dcache #(
 
     /* read control */
     // choose data from mem or return buffer 
-    // TODO: use the signal 'data_from_mem' and address in request buffer to choose the data source
-    assign rdata = 0;
+    // FIXME: use the signal 'data_from_mem' and address in request buffer to choose the data source
+    wire    [31:0]              rdata_mem[0:WORD_NUM-1];
+    wire    [31:0]              rdata_ret[0:WORD_NUM-1];
+    wire    [31:0]              inst_from_mem;
+    wire    [31:0]              inst_from_ret;
+    //assign rdata_mem = hit[0]? mem_rdata[0]: mem_rdata[1];
+    generate
+        genvar i;
+        for(i = 0; i < WORD_NUM; i = i+1) begin
+            always @(*) begin
+                case(hit)
+                    2'b10: rdata_mem[i] = mem_rdata[0][i*32+31:i*32];
+                    2'b01: rdata_mem[i] = mem_rdata[1][i*32+31:i*32];
+                    default:;
+                endcase
+            end
+            //assign rdata_mem[i] = hit[0]? mem_rdata[0][i*32+31:i*32]: mem_rdata[1][i*32+31:i*32];
+            assign rdata_ret[i] = ret_buf[i*32+31:i*32];
+        end
+    endgenerate
+    assign inst_from_mem = rdata_mem[req_buf[BYTE_OFFSET_WIDTH-1:2]];
+    assign inst_from_ret = rdata_ret[req_buf[BYTE_OFFSET_WIDTH-1:2]];
+    assign rdata = data_from_mem? inst_from_mem: inst_from_ret;
 
     /* LRU replace */
     /* 
-        TODO:
+        FIXME:
             1. Design a LRU module to record the Least Recent Use information of each set
             2. Design some signals in the main FSM to update the LRU information when cache_hit or refill
     */
-    assign lru_sel = 0; // TODO
+    reg     [1:0]               lru_reg[SET_NUM-1:0];
+    reg                         lru_hit_update;
+    reg                         lru_ref_update;
+    always @(posedge clk) begin
+        if(lru_hit_update) begin
+            case(hit)
+                2'b10: lru_reg[w_index] <= 2'b01;
+                2'b01: lru_reg[w_index] <= 2'b10;
+                default:;
+            endcase
+        end
+        if(lru_ref_update) begin
+            case(mem_we)
+                2'b10: lru_reg[w_index] <= 2'b01;
+                2'b01: lru_reg[w_index] <= 2'b10;
+                default:;
+            endcase
+        end
+    end
+    assign lru_sel = lru_reg[w_index][1];
 
     /* dirty table */
     // record the dirty information of each set
         /* 
-        TODO:
+        FIXME:
             1. Design a dirty table for the two way to record if the data in the set has been written
             2. Design some signals in the main FSM to update the dirty table when cache_hit or refill
     */
-    assign dirty_info = 1; // TODO
+    reg     [SET_NUM-1:0]       dirty_table[0:1];
+    reg                         dirty_hit_update;
+    reg                         dirty_ref_update;
+    always @(posedge clk) begin
+        if(dirty_hit_update) begin
+            case(hit)
+                2'b10: dirty_table[0][w_index] <= 1;
+                2'b01: dirty_table[1][w_index] <= 1;
+                default:;
+            endcase
+        end
+        if(dirty_ref_update) begin
+            case(tagv_we)
+                2'b10: dirty_table[0][w_index] <= 0;
+                2'b01: dirty_table[1][w_index] <= 0;
+                default:;
+            endcase
+        end
+    end
+    assign dirty_info = dirty_table[lru_sel][w_index];
 
     /* write buffer */
     always @(posedge clk) begin
@@ -261,28 +320,31 @@ module dcache #(
     end
 
     /* miss buffer */
-    // TODO: when mbuf_we is 1, write the writeback address to the miss buffer
+    // FIXME: when mbuf_we is 1, write the writeback address to the miss buffer
     always @(posedge clk) begin
         if(!rstn) begin
             m_buf <= 0;
         end
         else if(mbuf_we) begin
-            m_buf <= 0; // TODO
+            m_buf <= {(lru_sel ? tag_rdata[1][TAG_WIDTH-1:0] : tag_rdata[0][TAG_WIDTH-1:0]), w_index, {BYTE_OFFSET_WIDTH{1'b0}}}; // TODO
+        end
+        else if(d_wvalid && d_wready) begin
+            mbuf <= m_buf + 4;
         end
     end
     
     /* memory visit settings*/
-    assign d_raddr  = {address[31:BYTE_OFFSET_WIDTH], {BYTE_OFFSET_WIDTH{1'b0}}};
-    assign d_rsize  = 3'h2;
     assign d_rlen   = WORD_NUM - 1;
-    assign d_waddr  = m_buf;
-    assign d_wsize  = 3'h2;
+    assign d_rsize  = 3'h2;
+    assign d_raddr  = {address[31:BYTE_OFFSET_WIDTH], {BYTE_OFFSET_WIDTH{1'b0}}};
     assign d_wlen   = WORD_NUM - 1;
+    assign d_wsize  = 3'h2;
+    assign d_waddr  = m_buf;
     assign d_wdata  = wbuf[31:0];
     assign d_wstrb  = 4'b1111;
 
     /* main FSM */
-    // TODO: No.2 TODO in LRU module and No.2 TODO in dirty table
+    // FIXME: No.2 TODO in LRU module and No.2 TODO in dirty table
     localparam 
         IDLE        = 3'd0,
         LOOKUP      = 3'd1,
@@ -356,6 +418,10 @@ module dcache #(
         wready               = 0;
         data_from_mem        = 1;
         wdata_from_pipe      = 1;
+        lru_hit_update       = 0;
+        lru_ref_update       = 0;
+        dirty_hit_update     = 0;
+        dirty_ref_update     = 0;
         case(state)
         IDLE: begin
             req_buf_we = 1;
@@ -366,6 +432,8 @@ module dcache #(
                 req_buf_we              = (rvalid || wvalid);
                 rready                  = !we_pipe;
                 wready                  = we_pipe;
+                lru_hit_update          = 1;
+                dirty_hit_update        = we_pipe;
             end
             else begin
                 wbuf_we = 1;
@@ -380,6 +448,8 @@ module dcache #(
             tagv_we[lru_sel]        = 1;
             mem_we[lru_sel]         = -1;
             wdata_from_pipe         = 0;
+            lru_ref_update          = 1;
+            dirty_ref_update        = 1;
         end
         WAIT_WRITE: begin
             wfsm_reset      = 1;
