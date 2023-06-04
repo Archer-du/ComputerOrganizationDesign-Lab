@@ -15,8 +15,8 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 module dcache #(
-    parameter INDEX_WIDTH       = 4,
-    parameter WORD_OFFSET_WIDTH = 2
+    parameter INDEX_WIDTH       = 4,//default: 16 blocks
+    parameter WORD_OFFSET_WIDTH = 2 //default: 4 words per block
 )(
     input                   clk,
     input                   rstn,
@@ -204,7 +204,7 @@ module dcache #(
     );
 
     /* hit */
-    // TODO
+    // TODO:
     assign tag          = address[31:32-TAG_WIDTH];     // the tag of the request
     assign hit[0]       = 0;        // TODO
     assign hit[1]       = 0;        // TODO

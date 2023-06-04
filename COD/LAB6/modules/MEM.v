@@ -121,8 +121,7 @@ axi_arbiter axi_arbiter_dut (
     .bready   (bready)
 );
 
-
-blk_mem_gen_0 your_instance_name (
+main_memory main_mem(
     .s_aclk         (clk ),
     .s_aresetn      (rstn ),
     .s_axi_araddr   (araddr ),
