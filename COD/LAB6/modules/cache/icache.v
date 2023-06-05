@@ -202,8 +202,10 @@ module icache #(
     reg                         lru_ref_update;
     generate
         for(i = 0; i < SET_NUM; i = i+1) begin
-            initial begin
-                lru_reg[i] = 2'b10;
+            always @(posedge clk) begin
+                if(!rstn) begin
+                    lru_reg[i] = 2'b10;
+                end
             end
         end
     endgenerate

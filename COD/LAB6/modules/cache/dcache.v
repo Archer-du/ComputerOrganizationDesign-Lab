@@ -110,7 +110,7 @@ module dcache #(
     reg                         wbuf_we;
 
     // miss buffer
-    reg     [31:0]              m_buf;
+    reg     [31:0]              mbuf;
     reg                         mbuf_we;
 
     // communication between write fsm and main fsm
@@ -228,28 +228,26 @@ module dcache #(
     /* read control */
     // choose data from mem or return buffer 
     // FIXME: use the signal 'data_from_mem' and address in request buffer to choose the data source
-    wire    [31:0]              rdata_mem[0:WORD_NUM-1];
+    reg     [31:0]              rdata_mem[0:WORD_NUM-1];
     wire    [31:0]              rdata_ret[0:WORD_NUM-1];
-    wire    [31:0]              inst_from_mem;
-    wire    [31:0]              inst_from_ret;
-    //assign rdata_mem = hit[0]? mem_rdata[0]: mem_rdata[1];
+    wire    [31:0]              rdata_from_mem;
+    wire    [31:0]              rdata_from_ret;
     generate
         genvar i;
         for(i = 0; i < WORD_NUM; i = i+1) begin
             always @(*) begin
                 case(hit)
-                    2'b10: rdata_mem[i] = mem_rdata[0][i*32+31:i*32];
-                    2'b01: rdata_mem[i] = mem_rdata[1][i*32+31:i*32];
-                    default:;
+                    2'b10: rdata_mem[i] = mem_rdata[1][i*32+31:i*32];
+                    2'b01: rdata_mem[i] = mem_rdata[0][i*32+31:i*32];
+                    default: rdata_mem[i] = 0;
                 endcase
             end
-            //assign rdata_mem[i] = hit[0]? mem_rdata[0][i*32+31:i*32]: mem_rdata[1][i*32+31:i*32];
             assign rdata_ret[i] = ret_buf[i*32+31:i*32];
         end
     endgenerate
-    assign inst_from_mem = rdata_mem[req_buf[BYTE_OFFSET_WIDTH-1:2]];
-    assign inst_from_ret = rdata_ret[req_buf[BYTE_OFFSET_WIDTH-1:2]];
-    assign rdata = data_from_mem? inst_from_mem: inst_from_ret;
+    assign rdata_from_mem = rdata_mem[req_buf[BYTE_OFFSET_WIDTH-1:2]];
+    assign rdata_from_ret = rdata_ret[req_buf[BYTE_OFFSET_WIDTH-1:2]];
+    assign rdata = data_from_mem? rdata_from_mem: rdata_from_ret;
 
     /* LRU replace */
     /* 
@@ -257,26 +255,35 @@ module dcache #(
             1. Design a LRU module to record the Least Recent Use information of each set
             2. Design some signals in the main FSM to update the LRU information when cache_hit or refill
     */
-    reg     [1:0]               lru_reg[SET_NUM-1:0];
+    reg     [1:0]               lru_reg[0:SET_NUM-1];
     reg                         lru_hit_update;
     reg                         lru_ref_update;
+    generate
+        for(i = 0; i < SET_NUM; i = i+1) begin
+            always @(posedge clk) begin
+                if(!rstn) begin
+                    lru_reg[i] = 2'b10;
+                end
+            end
+        end
+    endgenerate
     always @(posedge clk) begin
         if(lru_hit_update) begin
             case(hit)
-                2'b10: lru_reg[w_index] <= 2'b01;
-                2'b01: lru_reg[w_index] <= 2'b10;
+                2'b01: lru_reg[w_index] <= 2'b01;
+                2'b10: lru_reg[w_index] <= 2'b10;
                 default:;
             endcase
         end
         if(lru_ref_update) begin
-            case(mem_we)
-                2'b10: lru_reg[w_index] <= 2'b01;
-                2'b01: lru_reg[w_index] <= 2'b10;
+            case(tagv_we)
+                2'b01: lru_reg[w_index] <= 2'b01;
+                2'b10: lru_reg[w_index] <= 2'b10;
                 default:;
             endcase
         end
     end
-    assign lru_sel = lru_reg[w_index][1];
+    assign lru_sel = lru_reg[w_index][0];
 
     /* dirty table */
     // record the dirty information of each set
@@ -289,19 +296,25 @@ module dcache #(
     reg                         dirty_hit_update;
     reg                         dirty_ref_update;
     always @(posedge clk) begin
-        if(dirty_hit_update) begin
-            case(hit)
-                2'b10: dirty_table[0][w_index] <= 1;
-                2'b01: dirty_table[1][w_index] <= 1;
-                default:;
-            endcase
+        if(!rstn) begin
+            dirty_table[0] <= {SET_NUM{1'b0}};
+            dirty_table[1] <= {SET_NUM{1'b0}};
         end
-        if(dirty_ref_update) begin
-            case(tagv_we)
-                2'b10: dirty_table[0][w_index] <= 0;
-                2'b01: dirty_table[1][w_index] <= 0;
-                default:;
-            endcase
+        else begin
+            if(dirty_hit_update) begin
+                case(hit)
+                    2'b01: dirty_table[0][w_index] <= 1;
+                    2'b10: dirty_table[1][w_index] <= 1;
+                    default:;
+                endcase
+            end
+            else if(dirty_ref_update) begin
+                case(tagv_we)
+                    2'b01: dirty_table[0][w_index] <= we_pipe;
+                    2'b10: dirty_table[1][w_index] <= we_pipe;
+                    default:;
+                endcase
+            end
         end
     end
     assign dirty_info = dirty_table[lru_sel][w_index];
@@ -323,13 +336,10 @@ module dcache #(
     // FIXME: when mbuf_we is 1, write the writeback address to the miss buffer
     always @(posedge clk) begin
         if(!rstn) begin
-            m_buf <= 0;
+            mbuf <= 0;
         end
         else if(mbuf_we) begin
-            m_buf <= {(lru_sel ? tag_rdata[1][TAG_WIDTH-1:0] : tag_rdata[0][TAG_WIDTH-1:0]), w_index, {BYTE_OFFSET_WIDTH{1'b0}}}; // TODO
-        end
-        else if(d_wvalid && d_wready) begin
-            mbuf <= m_buf + 4;
+            mbuf <= {(lru_sel ? tag_rdata[1][TAG_WIDTH-1:0] : tag_rdata[0][TAG_WIDTH-1:0]), w_index, {BYTE_OFFSET_WIDTH{1'b0}}}; // TODO
         end
     end
     
@@ -339,7 +349,7 @@ module dcache #(
     assign d_raddr  = {address[31:BYTE_OFFSET_WIDTH], {BYTE_OFFSET_WIDTH{1'b0}}};
     assign d_wlen   = WORD_NUM - 1;
     assign d_wsize  = 3'h2;
-    assign d_waddr  = m_buf;
+    assign d_waddr  = mbuf;
     assign d_wdata  = wbuf[31:0];
     assign d_wstrb  = 4'b1111;
 
