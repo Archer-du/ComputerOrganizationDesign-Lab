@@ -5,7 +5,7 @@
 // Author: Ma Zirui
 // Course: Coputer Organization and Design
 // Module: Instruction Cache
-// TODO:
+// FIXME:
 //     1. Complete hit logic in hit module
 //     2. Correctly choose the correct read data in read control module
 //     3. Complete LRU module
@@ -156,61 +156,77 @@ module icache #(
     assign i_raddr  = {req_buf[31:BYTE_OFFSET_WIDTH], {BYTE_OFFSET_WIDTH{1'b0}}};   // align to the block address
 
     /* hit */
-    /* TODO: calculate the hit signal correctly */
+    /* FIXME: calculate the hit signal correctly */
+    //input: tag(req_buf)
+    //input: tag_rdata1(tag_rdata[0])
+    //input: tag_rdata2(tag_rdata[1])
     assign tag          = req_buf[31:32-TAG_WIDTH]; // the tag of the request
-    assign hit[0]       = (tag == tag_rdata[0][TAG_WIDTH-1:0]) && tag_rdata[0][TAG_WIDTH];        // FIXME: 
-    assign hit[1]       = (tag == tag_rdata[1][TAG_WIDTH-1:0]) && tag_rdata[1][TAG_WIDTH];        // FIXME:
+    assign hit[0]       = (tag == tag_rdata[0][TAG_WIDTH-1:0]) && tag_rdata[0][TAG_WIDTH];//TODO
+    assign hit[1]       = (tag == tag_rdata[1][TAG_WIDTH-1:0]) && tag_rdata[1][TAG_WIDTH];//TODO
     assign hit_way      = hit[0] ? 0 : 1;           // only when cache_hit, hit_way is valid
     assign cache_hit    = |hit;
     
-
     /* read control */
     // choose data from mem or return buffer 
-    // TODO: use the signal 'data_from_mem' and address in request buffer to choose the data source
-    wire    [31:0]              rdata_mem[WORD_NUM-1:0];
-    wire    [31:0]              rdata_ret[WORD_NUM-1:0];
+    // FIXME: use the signal 'data_from_mem' and address in request buffer to choose the data source
+    reg     [31:0]              rdata_mem[0:WORD_NUM-1];
+    wire    [31:0]              rdata_ret[0:WORD_NUM-1];
     wire    [31:0]              inst_from_mem;
     wire    [31:0]              inst_from_ret;
-    //assign rdata_mem = hit[0]? mem_rdata[0]: mem_rdata[1];
     generate
         genvar i;
         for(i = 0; i < WORD_NUM; i = i+1) begin
-            assign rdata_mem[i] = hit[0]? mem_rdata[0][i*32+31:i*32]: mem_rdata[1][i*32+31:i*32];
+            always @(*) begin
+                case(hit)
+                    2'b10: rdata_mem[i] = mem_rdata[1][i*32+31:i*32];
+                    2'b01: rdata_mem[i] = mem_rdata[0][i*32+31:i*32];
+                    default: rdata_mem[i] = 0;
+                endcase
+            end
+            //assign rdata_mem[i] = hit[0]? mem_rdata[0][i*32+31:i*32]: mem_rdata[1][i*32+31:i*32];
             assign rdata_ret[i] = ret_buf[i*32+31:i*32];
         end
     endgenerate
     assign inst_from_mem = rdata_mem[req_buf[BYTE_OFFSET_WIDTH-1:2]];
     assign inst_from_ret = rdata_ret[req_buf[BYTE_OFFSET_WIDTH-1:2]];
-    assign rdata = data_from_mem? inst_from_mem: inst_from_ret; // FIXME:
+    assign rdata = data_from_mem? inst_from_mem: inst_from_ret;
+    
     /* LRU */
     /* 
-        TODO:
+        FIXME:
             1. Design a LRU module to record the Least Recent Use information of each set
             2. Design some signals in the main FSM to update the LRU information when cache_hit or refill
     */
-    reg     [1:0]               lru_reg[SET_NUM-1:0];
+    reg     [1:0]               lru_reg[0:SET_NUM-1];
     reg                         lru_hit_update;
     reg                         lru_ref_update;
+    generate
+        for(i = 0; i < SET_NUM; i = i+1) begin
+            initial begin
+                lru_reg[i] = 2'b10;
+            end
+        end
+    endgenerate
     always @(posedge clk) begin
         if(lru_hit_update) begin
             case(hit)
-                2'b10: lru_reg[w_index] <= 2'b01;
-                2'b01: lru_reg[w_index] <= 2'b10;
+                2'b01: lru_reg[w_index] <= 2'b01;
+                2'b10: lru_reg[w_index] <= 2'b10;
                 default:;
             endcase
         end
         if(lru_ref_update) begin
             case(mem_we)
-                2'b10: lru_reg[w_index] <= 2'b01;
-                2'b01: lru_reg[w_index] <= 2'b10;
+                2'b01: lru_reg[w_index] <= 2'b01;
+                2'b10: lru_reg[w_index] <= 2'b10;
                 default:;
             endcase
         end
     end
-    assign lru_sel = lru_reg[w_index][1];
+    assign lru_sel = lru_reg[w_index][0];
 
     /* main FSM */
-    // TODO: No.2 TODO in LRU module
+    // FIXME: No.2 TODO in LRU module
     localparam [2:0] 
         IDLE    = 3'b000, 
         LOOKUP  = 3'b001,
@@ -271,8 +287,8 @@ module icache #(
             i_rvalid        = 1;
         end
         REFILL: begin
-            tagv_we                 = lru_sel ? 2'b01 : 2'b10;
-            mem_we                  = lru_sel ? 2'b01 : 2'b10;
+            tagv_we                 = lru_sel ? 2'b10 : 2'b01;
+            mem_we                  = lru_sel ? 2'b10 : 2'b01;
             rready                  = 1;
             req_buf_we              = rvalid;
             data_from_mem           = 0;
