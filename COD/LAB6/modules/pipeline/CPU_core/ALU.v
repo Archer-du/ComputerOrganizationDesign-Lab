@@ -37,6 +37,9 @@ module ALU
                 alu_res = alu_op1 << alu_op2;
                 OF = 0;
             end
+            4'b1010: begin
+                alu_res = ($signed(alu_op1) < $signed(alu_op2))? 1: 0;
+            end
             default: begin
                 alu_res = 0;
                 OF = 0;

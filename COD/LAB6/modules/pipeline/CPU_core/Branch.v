@@ -4,12 +4,12 @@ module Branch(
 
     output reg br
 );
-    localparam NONE_BR = 3'b000;
-    localparam BEQ = 3'b001;
-    localparam BLT = 3'b010;
-    localparam BNE = 3'b011;
-    localparam BGE = 3'b100;
-    localparam BLTU = 3'b101;
+    localparam NONE_BR  = 3'b000;
+    localparam BEQ      = 3'b001;
+    localparam BLT      = 3'b010;
+    localparam BNE      = 3'b011;
+    localparam BGE      = 3'b100;
+    localparam BLTU     = 3'b101;
 
     always@(*) begin
         case(br_type)

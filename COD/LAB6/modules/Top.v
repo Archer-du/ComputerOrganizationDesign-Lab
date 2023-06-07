@@ -1,90 +1,29 @@
 `timescale 1ns / 1ps
 /* 
- *   Author: wintermelon
- *   Last update: 2023.04.13
+ *   Author: Archer
  */
 
-module Top(
-    input clk,	// system clock
-
-    // Input: buttons and switches
-    input btn,      // button
-    input [7:0] sw,	// sw7-0 IMPORTANT: SW7 IS THE SYSTEM RESET SIGNAL!
-
-    // Output: leds and segments	
-    output [7:0] led,	            // led7-0
-    output [2:0] hexplay_an,		// hexplay_an
-    output [3:0] hexplay_data,		// hexplay_data
-
-    // Uart: data transmission
-    input uart_din,         // uart_tx
-    output uart_dout        // uart_rx
+module Top #(
+    parameter   INDEX_WIDTH         = 4,
+    parameter   WORD_OFFSET_WIDTH   = 2
+)(
+    input cpu_clk,	// system clock
+    input cpu_rst   //
 );
 
-    wire[31:0] cpu_check_data, cpu_check_addr, mem_check_data, mem_check_addr;
-    wire[31:0] mem_addr, mem_din, mem_dout, im_addr, im_dout;
-    wire [31:0] current_pc, next_pc;
-    wire [31:0] mmio_dout, dm_dout;
-    wire mem_we, mmio_we, dm_we;
-    wire cpu_rst, cpu_clk;
-    wire rst;
+    wire                i_rvalid_pipe;
+    wire                i_rready_pipe;
+    wire    [31:0]      i_raddr_pipe;
+    wire    [31:0]      i_rdata_pipe;
 
-    // IMPORTANT
-    assign rst = sw[7];
-    // IMPORTANT
-         
-    // When address begins with 0x7f, that's MMIO =========================
-    assign mem_dout = (mem_addr[15:8] == 8'h7f) ? mmio_dout : dm_dout;    
-    assign mmio_we = (mem_addr[15:8] == 8'h7f) ? mem_we : 0;
-    assign dm_we = (mem_addr[15:8] == 8'h7f) ? 0 : mem_we;
-    // When address begins with 0x7f, that's MMIO =========================
-
-
-
-    PDU pdu(
-        .clk(clk),	// system clock
-        .rst(rst),  // system rst
-
-        // ================================ Peripherals Part ================================
-        // Input: buttons and switches
-        .btn(btn),                          // button
-        .sw(sw),	                        // sw7-0
-
-        // Output: leds and segments	
-        .led(led),	                        // led7-0
-        .hexplay_an(hexplay_an),		    // hexplay_an
-        .hexplay_data(hexplay_data),		// hexplay_data
-
-        // Uart: data transmission  
-        .uart_din(uart_din),                // uart_tx
-        .uart_dout(uart_dout),              // uart_rx
-
-
-        // ================================ MMIO Part ================================
-        // MMIO BUS
-        .mmio_addr(mem_addr),             // MMIO address
-        .mmio_we(mmio_we),                // MMIO writing enable
-        .mmio_din(mem_din),              // Data from MMIO to CPU
-        .mmio_dout(mmio_dout),             // Data from CPU to MMIO
-
-
-        // ================================ Debug Part ================================
-        // CPU control signals
-        .cpu_rst(cpu_rst),
-        .cpu_clk(cpu_clk),
-
-        // CPU debug bus
-        .cpu_check_data(cpu_check_data),
-        .cpu_check_addr(cpu_check_addr),
-        .current_pc(current_pc),
-        .next_pc(next_pc),
-
-        // MEM debug BUS
-        .mem_check_addr(mem_check_addr),
-        .mem_check_data(mem_check_data)
-    );
-
-
+    wire    [31:0]      d_addr_pipe;
+    wire                d_rvalid_pipe;
+    wire                d_rready_pipe;
+    wire                d_wvalid_pipe;
+    wire                d_wready_pipe;
+    wire    [31:0]      d_rdata_pipe;
+    wire    [31:0]      d_wdata_pipe;
+    wire    [3:0]       d_wstrb_pipe;
 
     CPU cpu (
         .clk(cpu_clk), 
@@ -92,42 +31,138 @@ module Top(
 
         // ================================ Memory and MMIO Part ================================
         // MEM And MMIO Data BUS
-        .im_addr(im_addr),
-        .im_dout(im_dout),
-        .mem_addr(mem_addr),
-        .mem_we(mem_we),			
-        .mem_din(mem_din),	
-        .mem_dout(mem_dout),
+        // icache: AXI4--valid/ready
+        .im_rvalid(i_rvalid_pipe),
+        .im_rready(i_rready_pipe),
+        .im_addr(i_raddr_pipe),
+        .im_dout(i_rdata_pipe),
 
-
-        // ================================ Debug Part ================================
-        // Debug BUS with PDU
-        .current_pc(current_pc), 	 
-        .next_pc(next_pc),   
-        .cpu_check_addr(cpu_check_addr),	
-        .cpu_check_data(cpu_check_data)    
+        // dcache: AXI4--valid/ready
+        .dm_addr(d_addr_pipe),
+        .dm_rvalid(d_rvalid_pipe),
+        .dm_rready(d_rready_pipe),
+        .dm_wvalid(d_wvalid_pipe),
+        .dm_wready(d_wready_pipe),
+        .dm_we(dm_we),			
+        .dm_din(d_wdata_pipe),	
+        .dm_dout(d_rdata_pipe),
+        .dm_wstrb(d_wstrb_pipe)
     );
-
-
 
     MEM memory (
         .clk(cpu_clk),
-        // No reset signals here
-
+        .rstn(!cpu_rst),
 
         // ================================ Memory Part ================================
         // MEM Data BUS with CPU
-        .im_addr(im_addr),
-        .im_dout(im_dout),
-        .dm_addr(mem_addr),
-        .dm_we(dm_we),
-        .dm_din(mem_din),
-        .dm_dout(dm_dout),
-        
+        // icache
+        .i_rvalid(i_rvalid),
+        .i_rready(i_rready),
+        .i_raddr(i_raddr),
+        .i_rdata(i_rdata),
+        .i_rlast(i_rlast),
+        .i_rsize(i_rsize),
+        .i_rlen(i_rlen),
 
-        // ================================ Debug Part ================================
-        // MEM Debug BUS
-        .mem_check_addr(mem_check_addr),
-        .mem_check_data(mem_check_data)
+        // dcache
+        .d_rvalid(d_rvalid),
+        .d_rready(d_rready),
+        .d_raddr(d_raddr),
+        .d_rdata(d_rdata),
+        .d_rlast(d_rlast),
+        .d_rsize(d_rsize),
+        .d_rlen(d_rlen),
+        .d_wvalid(d_wvalid),
+        .d_wready(d_wready),
+        .d_waddr(d_waddr),
+        .d_wdata(d_wdata),
+        .d_wstrb(d_wstrb),
+        .d_wlast(d_wlast),
+        .d_wsize(d_wsize),
+        .d_wlen(d_wlen),
+        .d_bvalid(d_bvalid),
+        .d_bready(d_bready)
     );
+
+    wire                i_rvalid;
+    wire                i_rready;
+    wire    [31:0]      i_raddr;
+    wire    [31:0]      i_rdata;
+    wire                i_rlast;
+    wire    [2:0]       i_rsize;
+    wire    [7:0]       i_rlen;
+
+    icache #(
+    .INDEX_WIDTH          (INDEX_WIDTH),
+    .WORD_OFFSET_WIDTH    (WORD_OFFSET_WIDTH)
+    )
+    icache_dut (
+        .clk      (cpu_clk),
+        .rstn     (!cpu_rst),
+        .rvalid   (i_rvalid_pipe),
+        .rready   (i_rready_pipe),
+        .raddr    (i_raddr_pipe),
+        .rdata    (i_rdata_pipe),
+
+        .i_rvalid (i_rvalid),
+        .i_rready (i_rready),
+        .i_raddr  (i_raddr),
+        .i_rdata  (i_rdata),
+        .i_rlast  (i_rlast),
+        .i_rsize  (i_rsize),
+        .i_rlen   (i_rlen)
+    );
+
+    wire                d_rvalid;
+    wire                d_rready;
+    wire    [31:0]      d_raddr;
+    wire    [31:0]      d_rdata;
+    wire                d_rlast;
+    wire    [2:0]       d_rsize;
+    wire    [7:0]       d_rlen;
+    wire                d_wvalid;
+    wire                d_wready;
+    wire    [31:0]      d_waddr;
+    wire    [31:0]      d_wdata;
+    wire    [3:0]       d_wstrb;
+    wire                d_wlast;
+    wire    [2:0]       d_wsize;
+    wire    [7:0]       d_wlen;
+    wire                d_bvalid;
+    wire                d_bready;
+
+    dcache #(
+        .INDEX_WIDTH        (INDEX_WIDTH),
+        .WORD_OFFSET_WIDTH  (WORD_OFFSET_WIDTH)
+    )
+    dcache_dut (
+        .clk      (cpu_clk),
+        .rstn     (!cpu_rst),
+        .addr     (d_addr_pipe),
+        .rvalid   (d_rvalid_pipe),
+        .rready   (d_rready_pipe),
+        .rdata    (d_rdata_pipe),
+        .wvalid   (d_wvalid_pipe),
+        .wready   (d_wready_pipe),
+        .wdata    (d_wdata_pipe),
+        .wstrb    (d_wstrb_pipe),
+        .d_rvalid (d_rvalid),
+        .d_rready (d_rready),
+        .d_raddr  (d_raddr),
+        .d_rdata  (d_rdata),
+        .d_rlast  (d_rlast),
+        .d_rsize  (d_rsize),
+        .d_rlen   (d_rlen),
+        .d_wvalid (d_wvalid),
+        .d_wready (d_wready),
+        .d_waddr  (d_waddr),
+        .d_wdata  (d_wdata),
+        .d_wstrb  (d_wstrb),
+        .d_wlast  (d_wlast),
+        .d_wsize  (d_wsize),
+        .d_wlen   (d_wlen),
+        .d_bvalid (d_bvalid),
+        .d_bready (d_bready)
+    );
+
 endmodule

@@ -11,10 +11,7 @@ module RF
         input [ADDRNUM-1:0] ra1,
         output [WIDTH-1:0] rd1,
         input [ADDRNUM-1:0] wa,
-        input [WIDTH-1:0] wd,
-
-        input [ADDRNUM-1:0]ra_dbg,
-        output [WIDTH-1:0]rd_dbg
+        input [WIDTH-1:0] wd
     );
     
     reg [WIDTH-1:0] regfile[0:REGNUM-1];
@@ -40,6 +37,4 @@ module RF
 
     assign rd0 = (we && wa == ra0 && wa != 0)? wd: regfile[ra0];
     assign rd1 = (we && wa == ra1 && wa != 0)? wd: regfile[ra1];
-
-    assign rd_dbg = (we && wa == ra_dbg && wa != 0)? wd: regfile[ra_dbg];
 endmodule

@@ -3,13 +3,13 @@ module PC(
     input clk,
     input stall,
 
-    input [31:0] pc_next,
-    output reg [31:0] pc_cur
+    input [31:0]        pc_next,
+    output reg [31:0]   pc_cur
 );
     always @(posedge clk or posedge rst) begin
         if(!stall) begin
             if(rst) begin
-                pc_cur <= 32'h2ffc;
+                pc_cur <= 32'hfffffffc;
             end
             else begin
                 pc_cur <= pc_next;

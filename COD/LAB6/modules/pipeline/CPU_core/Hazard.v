@@ -1,31 +1,33 @@
 module Hazard(
-    input [4:0] rf_ra0_ex,
-    input [4:0] rf_ra1_ex,
-    input rf_re0_ex,
-    input rf_re1_ex,
-    input rf_we_mem,
-    input [4:0] rf_wa_mem,
-    input [1:0] rf_wd_sel_mem,
-    input [31:0] alu_ans_mem,
-    input [31:0] pc_add4_mem,
-    input [31:0] imm_mem,
-    input rf_we_wb,
-    input [4:0] rf_wa_wb,
-    input [31:0] rf_wd_wb,
-    input jal_ex, jalr_ex, br_ex,
+    input [4:0]     rf_ra0_ex,
+    input [4:0]     rf_ra1_ex,
+    input           rf_re0_ex,
+    input           rf_re1_ex,
+    input           rf_we_mem,
+    input [4:0]     rf_wa_mem,
+    input [1:0]     rf_wd_sel_mem,
+    input [31:0]    alu_ans_mem,
+    input [31:0]    pc_add4_mem,
+    input [31:0]    imm_mem,
+    input           rf_we_wb,
+    input [4:0]     rf_wa_wb,
+    input [31:0]    rf_wd_wb,
+    input           jal_ex, jalr_ex, br_ex,
 
-    output rf_rd0_fe,
-    output rf_rd1_fe,
-    output reg [31:0] rf_rd0_fd,
-    output reg [31:0] rf_rd1_fd,
+    output              rf_rd0_fe,
+    output              rf_rd1_fe,
+    output reg [31:0]   rf_rd0_fd,
+    output reg [31:0]   rf_rd1_fd,
 
-    output stall_if,
-    output stall_id,
-    output stall_ex,
+    output              stall_if1,
+    output              stall_if2,
+    output              stall_id,
+    output              stall_ex,
 
-    output flush_id,
-    output flush_ex,
-    output flush_mem //
+    output              flush_if2,
+    output              flush_id,
+    output              flush_ex,
+    output              flush_mem //
 );
 
     localparam ALU_RES = 2'b00;
@@ -74,12 +76,14 @@ module Hazard(
     
     //Data Hazard: bubbling
     assign data_hzd_mem = rf_we_mem && rf_wa_mem != 0 && ((rf_re0_ex && rf_wa_mem == rf_ra0_ex) || (rf_re1_ex && rf_wa_mem == rf_ra1_ex));
-    assign stall_if = (data_hzd_mem && rf_wd_sel_mem == MEM_RD);
-    assign stall_id = (data_hzd_mem && rf_wd_sel_mem == MEM_RD);
-    assign stall_ex = (data_hzd_mem && rf_wd_sel_mem == MEM_RD);
-    assign flush_mem = (data_hzd_mem && rf_wd_sel_mem == MEM_RD);
+    assign stall_if1    = (data_hzd_mem && rf_wd_sel_mem == MEM_RD);
+    assign stall_if2    = (data_hzd_mem && rf_wd_sel_mem == MEM_RD);
+    assign stall_id     = (data_hzd_mem && rf_wd_sel_mem == MEM_RD);
+    assign stall_ex     = (data_hzd_mem && rf_wd_sel_mem == MEM_RD);
+    assign flush_mem    = (data_hzd_mem && rf_wd_sel_mem == MEM_RD);
 
     //Control Hazard
-    assign flush_id = (jal_ex || br_ex || jalr_ex);
-    assign flush_ex = (jal_ex || br_ex || jalr_ex);
+    assign flush_if2    = (jal_ex || br_ex || jalr_ex);
+    assign flush_id     = (jal_ex || br_ex || jalr_ex);
+    assign flush_ex     = (jal_ex || br_ex || jalr_ex);
 endmodule
