@@ -32,6 +32,8 @@ module dcache #(
     input [31:0]            wdata,              // write data from pipeline
     input [3:0]             wstrb,              // write mask of each write-back word from pipeline, if the request is a read request, wstrb is 4'b0
 
+    input                   stall,
+
     /* from AXI arbiter */
     // read
     output reg              d_rvalid,           // valid signal of read request to main memory
@@ -360,7 +362,8 @@ module dcache #(
         LOOKUP      = 3'd1,
         MISS        = 3'd2,
         REFILL      = 3'd3,
-        WAIT_WRITE  = 3'd4;
+        WAIT_WRITE  = 3'd4,
+        PAUSE       = 3'd5;
     reg [2:0] state, next_state;
     always @(posedge clk) begin
         if(!rstn) begin
@@ -382,7 +385,10 @@ module dcache #(
         end
         LOOKUP: begin
             if(cache_hit) begin
-                next_state = (rvalid || wvalid) ? LOOKUP : IDLE;
+                if(stall && d_rvalid)
+                    next_state = PAUSE;
+                else
+                    next_state = (rvalid || wvalid) ? LOOKUP : IDLE;
             end
             else begin
                 next_state = MISS;
@@ -401,11 +407,20 @@ module dcache #(
         end
         WAIT_WRITE: begin
             if(wrt_finish) begin
-                next_state = (rvalid || wvalid) ? LOOKUP : IDLE;
+                if(stall && d_rvalid)
+                    next_state = PAUSE;
+                else
+                    next_state = (rvalid || wvalid) ? LOOKUP : IDLE;
             end
             else begin
                 next_state = WAIT_WRITE;
             end
+        end
+        PAUSE: begin
+            if(stall && d_rvalid)
+                next_state = PAUSE;
+            else
+                next_state = (rvalid || wvalid) ? LOOKUP : IDLE;
         end
         default: begin
             next_state = IDLE;
@@ -467,6 +482,10 @@ module dcache #(
             wready          = wrt_finish & we_pipe;
             data_from_mem   = 0;
             req_buf_we      = wrt_finish & (rvalid || wvalid);
+        end
+        PAUSE: begin
+            rready          = !we_pipe;
+            wready          = we_pipe;
         end
         endcase
     end

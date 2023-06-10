@@ -22,9 +22,10 @@ module icache #(
     input               rstn,           
     // for pipeline 
     input               rvalid,         // valid signal of read request from pipeline
-    output reg          rready,         // ready signal of read request to pipeline(TODO:extern: else stall IF2)
+    output reg          rready,         // ready signal of read request to pipeline
     input [31:0]        raddr,          // read address from pipeline
     output [31:0]       rdata,          // read data to pipeline
+    input               stall,
     // for AXI arbiter
     output reg          i_rvalid,       // valid signal of read request to main memory
     input               i_rready,       // ready signal of read request from main memory
@@ -233,7 +234,8 @@ module icache #(
         IDLE    = 3'b000, 
         LOOKUP  = 3'b001,
         MISS    = 3'b010, 
-        REFILL  = 3'b011;
+        REFILL  = 3'b011,
+        PAUSE   = 3'b100;
     reg [2:0] state, next_state;
     // stage 1
     always @(posedge clk) begin
@@ -252,14 +254,24 @@ module icache #(
                 else                    next_state = IDLE;
             end
             LOOKUP: begin
-                if(cache_hit)           next_state = rvalid ? LOOKUP : IDLE;
+                if(cache_hit) begin
+                    if(stall)           next_state = PAUSE;
+                    else                next_state = rvalid ? LOOKUP : IDLE;
+                end
                 else                    next_state = MISS;
             end
             MISS: begin
                 if(i_rready && i_rlast) next_state = REFILL;
                 else                    next_state = MISS;
             end
-            REFILL:                     next_state = rvalid ? LOOKUP : IDLE;
+            REFILL: begin
+                if(stall)               next_state = PAUSE;
+                else                    next_state = rvalid ? LOOKUP : IDLE;
+            end
+            PAUSE: begin
+                if(stall)               next_state = PAUSE;
+                else                    next_state = rvalid ? LOOKUP : IDLE;
+            end
             default:                    next_state = IDLE;
         endcase
     end
@@ -296,9 +308,14 @@ module icache #(
             data_from_mem           = 0;
             lru_ref_update          = 1;
         end
+        PAUSE: begin
+            rready                  = 1;
+        end
         default:;
         endcase
     end
+
+    //statistics
     always @(posedge clk) begin
         if(!rstn) begin
             total_time <= 0;

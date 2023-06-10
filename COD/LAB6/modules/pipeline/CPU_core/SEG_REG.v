@@ -75,6 +75,14 @@ module SEG_REG(
     input               dm_we_in,
     output reg          dm_we_out,
 
+    input               im_rvalid_in,
+    output reg          im_rvalid_out,
+
+    input               dm_rvalid_in,
+    output reg          dm_rvalid_out,
+    input               dm_wvalid_in,
+    output reg          dm_wvalid_out,
+
     input clk,
     input flush,            //add bubbles
     input stall             //stall
@@ -115,6 +123,9 @@ module SEG_REG(
         dm_din_out <= 32'h0;
         dm_dout_out <= 32'h0;
         dm_we_out <= 1'h0;
+        im_rvalid_out <= 1'b0;
+        dm_rvalid_out <= 1'b0;
+        dm_wvalid_out <= 1'b0;
     end
 
     always@(posedge clk) begin
@@ -154,6 +165,9 @@ module SEG_REG(
                 dm_din_out <= 32'h0;
                 dm_dout_out <= 32'h0;
                 dm_we_out <= 1'h0;
+                im_rvalid_out <= 1'b0;
+                dm_rvalid_out <= 1'b0;
+                dm_wvalid_out <= 1'b0;
             end
             else begin
                 pc_cur_out <= pc_cur_in;
@@ -194,6 +208,10 @@ module SEG_REG(
                 dm_din_out <= dm_din_in;
                 dm_dout_out <= dm_dout_in;
                 dm_we_out <= dm_we_in;
+
+                im_rvalid_out <= im_rvalid_in;
+                dm_rvalid_out <= dm_rvalid_in;
+                dm_wvalid_out <= dm_wvalid_in;
             end
         end
     end

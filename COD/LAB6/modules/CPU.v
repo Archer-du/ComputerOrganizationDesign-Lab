@@ -15,6 +15,7 @@ module CPU(
     input           im_rready,
     output  [31:0]  im_addr,        // Instruction address (The same as current PC)
     input   [31:0]  im_dout,        // Instruction data (Current instruction)
+    output          im_stall,
 
     // dcache: AXI4--valid/ready
     output  [31:0]  dm_addr,        // Memory read/write address
@@ -23,13 +24,16 @@ module CPU(
     output          dm_wvalid,
     input           dm_wready,
     input   [31:0]  dm_dout,	    // Data read from memory
+    output          dm_stall,
     output  [31:0]  dm_din,         // Data ready to write to memory
     output          dm_we,          // Memory writing enable
     output  [3:0]   dm_wstrb
 );
+
+    localparam LOAD     = 7'b0000011;
+    localparam STORE    = 7'b0100011;
 //  IF1 wires
     wire [31:0] inst;
-    wire [31:0] dm_dout;
 
     wire [31:0] pc_cur_if1;
     wire [31:0] pc_add4_if1;
@@ -115,6 +119,8 @@ module CPU(
     wire        br_ex;
     wire [31:0] pc_jalr_ex;
 
+    wire        im_rvalid_ex;
+
 //  MEM wires
     wire [31:0] pc_cur_mem;
     wire [31:0] inst_mem;
@@ -154,6 +160,10 @@ module CPU(
     wire [31:0] dm_din_mem;
     wire        dm_we_mem;
 
+    wire        im_rvalid_mem;
+    wire        dm_rvalid_mem;
+    wire        dm_wvalid_mem;
+
 //  WB wires
     wire [31:0] pc_cur_wb;
     wire [31:0] inst_wb;
@@ -191,13 +201,24 @@ module CPU(
     wire [31:0] dm_din_wb;
     wire [31:0] dm_dout_wb;
     wire        dm_we_wb;
+    
+    wire        im_rvalid_wb;
+    wire        dm_rvalid_wb;
+    wire        dm_wvalid_wb;
 
+    //Hazard
     wire [31:0] rf_rd0_fd;
     wire [31:0] rf_rd1_fd;
 
     //cache signals
     wire        icache_miss;
     wire        dcache_miss;
+
+    assign im_stall = stall_if1 || dcache_miss;
+    assign dm_stall = icache_miss;
+    assign im_rvalid = !(pc_cur_if1 == 32'hfffffffc);
+    assign dm_rvalid = (pc_cur_ex == 32'hfffffffc)? 0: (inst_ex[6:0] == LOAD);
+    assign dm_wvalid = (pc_cur_ex == 32'hfffffffc)? 0: (inst_ex[6:0] == STORE);
 
     //IF1 segment
     PC PC(
@@ -258,17 +279,22 @@ module CPU(
         .dm_dout_in(32'h0),
         .dm_we_in(1'h0),
 
+        .im_rvalid_in(im_rvalid),
+        .dm_rvalid_in(1'b0),
+        .dm_wvalid_in(1'b0),
+
         //output
         .pc_cur_out(pc_cur_if2),
         .rf_ra0_out(rf_ra0_if2),
         .rf_ra1_out(rf_ra1_if2),
         .rf_wa_out(rf_wa_if2),
-        .pc_add4_out(pc_add4_if2)
+        .pc_add4_out(pc_add4_if2),
+
+        .im_rvalid_out(im_rvalid_if2)
 
     );
 
-    assign im_rvalid = !(pc_cur_if1 == 32'hfffffffc);
-    assign icache_miss = (pc_cur_if1 == 32'b0000)? 0: im_rvalid && !im_rready;
+    assign icache_miss = im_rvalid_if2 && !im_rready;
 
     //IF2 segment
     SEG_REG IF2_ID(
@@ -314,14 +340,19 @@ module CPU(
         .dm_dout_in(32'h0),
         .dm_we_in(1'h0), 
 
+        .im_rvalid_in(im_rvalid_if2),
+        .dm_rvalid_in(1'b0),
+        .dm_wvalid_in(1'b0),
+
         //output
         .pc_cur_out(pc_cur_id),
         .inst_out(inst_id),
         .rf_ra0_out(rf_ra0_id),
         .rf_ra1_out(rf_ra1_id),
         .rf_wa_out(rf_wa_id),
-        .pc_add4_out(pc_add4_id)
+        .pc_add4_out(pc_add4_id),
 
+        .im_rvalid_out(im_rvalid_id)
     );
 
     //ID segment
@@ -361,7 +392,7 @@ module CPU(
 
     SEG_REG ID_EX(
         .clk(clk),
-        .stall(stall_ex || dcache_miss),//FIXME:
+        .stall(stall_ex || dcache_miss || icache_miss),//FIXME:
         .flush(flush_ex),
 
         //input
@@ -403,6 +434,10 @@ module CPU(
         .dm_dout_in(32'h0),
         .dm_we_in(dm_we_id),
 
+        .im_rvalid_in(im_rvalid_id),
+        .dm_rvalid_in(1'b0),
+        .dm_wvalid_in(1'b0),
+
         //output
         .pc_cur_out(pc_cur_ex),
         .inst_out(inst_ex),
@@ -429,7 +464,9 @@ module CPU(
         .jalr_out(jalr_ex),
         .br_type_out(br_type_ex),
 
-        .dm_we_out(dm_we_ex)
+        .dm_we_out(dm_we_ex),
+
+        .im_rvalid_out(im_rvalid_ex)
     );
 
     //EX segment
@@ -493,7 +530,7 @@ module CPU(
 
     SEG_REG EX_MEM(
         .clk(clk),
-        .stall(dcache_miss),
+        .stall(dcache_miss || icache_miss),
         .flush(flush_mem),
 
         //input
@@ -535,6 +572,10 @@ module CPU(
         .dm_dout_in(32'h0),
         .dm_we_in(dm_we_ex),
 
+        .im_rvalid_in(im_rvalid_ex),
+        .dm_rvalid_in(dm_rvalid),
+        .dm_wvalid_in(dm_wvalid),
+
         //output
         .pc_cur_out(pc_cur_mem),
         .inst_out(inst_mem),
@@ -571,21 +612,20 @@ module CPU(
         .pc_next_out(pc_next_mem),
         .dm_addr_out(dm_addr_mem),
         .dm_din_out(dm_din_mem),
-        .dm_we_out(dm_we_mem)
+        .dm_we_out(dm_we_mem),
+
+        .im_rvalid_out(im_rvalid_mem),
+        .dm_rvalid_out(dm_rvalid_mem),
+        .dm_wvalid_out(dm_wvalid_mem)
     );
 
-    localparam class_load   = 7'b0000011;
-    localparam S_type       = 7'b0100011;
-
-    assign wstrb = (inst_ex[6:0] == S_type)? 4'hf: 4'h0;
-    assign dm_rvalid = (pc_cur_ex == 32'hfffffffc)? 0: (inst_ex[6:0] == class_load);
-    assign dm_wvalid = (pc_cur_ex == 32'hfffffffc)? 0: (inst_ex[6:0] == S_type);
-    assign dcache_miss = (pc_cur_ex == 32'b0000)? 0: (dm_rvalid && !dm_rready) || (dm_wvalid && !dm_wready);
+    assign dm_wstrb = (inst_ex[6:0] == STORE)? 4'hf: 4'h0;
+    assign dcache_miss = (dm_rvalid_mem && !dm_rready) || (dm_wvalid_mem && !dm_wready);//FIXME:
     
     //MEM segment
     SEG_REG MEM_WB(
         .clk(clk),
-        .stall(dcache_miss),
+        .stall(dcache_miss || icache_miss),
         .flush(1'h0),
 
         //input
@@ -627,6 +667,10 @@ module CPU(
         .dm_dout_in(dm_dout),
         .dm_we_in(dm_we_mem),
 
+        .im_rvalid_in(im_rvalid_mem),
+        .dm_rvalid_in(dm_rvalid_mem),
+        .dm_wvalid_in(dm_wvalid_mem),
+
         //output
         .pc_cur_out(pc_cur_wb),
         .inst_out(inst_wb),
@@ -664,7 +708,11 @@ module CPU(
         .dm_addr_out(dm_addr_wb),
         .dm_din_out(dm_din_wb),
         .dm_dout_out(dm_dout_wb),
-        .dm_we_out(dm_we_wb)
+        .dm_we_out(dm_we_wb),
+
+        .im_rvalid_out(im_rvalid_wb),
+        .dm_rvalid_out(dm_rvalid_out),
+        .dm_wvalid_out(dm_wvalid_out)
     );
 
     MUX_RFwrite RF_writeback_MUX(
@@ -701,15 +749,17 @@ module CPU(
         .rf_rd1_fd(rf_rd1_fd),
 
         .stall_if1(stall_if1),
+        .stall_if2(stall_if2),
         .stall_id(stall_id),
         .stall_ex(stall_ex),
+
+        .flush_if2(flush_if2),
         .flush_id(flush_id),
         .flush_ex(flush_ex),
         .flush_mem(flush_mem)
     );
 
     assign inst     = im_dout;
-    assign dm_dout  = dm_dout;
 
     assign im_addr  = pc_cur_if1;
     assign dm_addr = alu_ans_mem;
