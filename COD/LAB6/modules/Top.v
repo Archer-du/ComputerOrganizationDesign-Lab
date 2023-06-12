@@ -16,6 +16,7 @@ module Top #(
     wire    [31:0]      i_raddr_pipe;
     wire    [31:0]      i_rdata_pipe;
     wire                i_stall_pipe;
+    wire                i_flush_pipe;
 
     wire    [31:0]      d_addr_pipe;
     wire                d_rvalid_pipe;
@@ -26,6 +27,7 @@ module Top #(
     wire    [31:0]      d_wdata_pipe;
     wire    [3:0]       d_wstrb_pipe;
     wire                d_stall_pipe;
+    wire                d_flush_pipe;
 
     //icache output
     wire                i_rvalid;
@@ -67,6 +69,7 @@ module Top #(
         .im_addr(i_raddr_pipe),
         .im_dout(i_rdata_pipe),
         .im_stall(i_stall_pipe),
+        .im_flush(i_flush_pipe),
 
         // dcache: AXI4--valid/ready
         .dm_addr(d_addr_pipe),
@@ -78,7 +81,8 @@ module Top #(
         .dm_din(d_wdata_pipe),	
         .dm_dout(d_rdata_pipe),
         .dm_wstrb(d_wstrb_pipe),
-        .dm_stall(d_stall_pipe)
+        .dm_stall(d_stall_pipe),
+        .dm_flush(d_flush_pipe)
     );
 
     MEM memory (
@@ -129,6 +133,7 @@ module Top #(
         .raddr    (i_raddr_pipe),
         .rdata    (i_rdata_pipe),
         .stall    (i_stall_pipe),
+        .flush    (i_flush_pipe),
 
         .i_rvalid (i_rvalid),
         .i_rready (i_rready),
@@ -155,6 +160,8 @@ module Top #(
         .wdata    (d_wdata_pipe),
         .wstrb    (d_wstrb_pipe),
         .stall    (d_stall_pipe),
+        .flush    (d_flush_pipe),
+
         .d_rvalid (d_rvalid),
         .d_rready (d_rready),
         .d_raddr  (d_raddr),

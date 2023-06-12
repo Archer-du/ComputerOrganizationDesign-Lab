@@ -26,6 +26,7 @@ module icache #(
     input [31:0]        raddr,          // read address from pipeline
     output [31:0]       rdata,          // read data to pipeline
     input               stall,
+    input               flush,
     // for AXI arbiter
     output reg          i_rvalid,       // valid signal of read request to main memory
     input               i_rready,       // ready signal of read request from main memory
@@ -190,7 +191,7 @@ module icache #(
     endgenerate
     assign inst_from_mem = rdata_mem[req_buf[BYTE_OFFSET_WIDTH-1:2]];
     assign inst_from_ret = rdata_ret[req_buf[BYTE_OFFSET_WIDTH-1:2]];
-    assign rdata = data_from_mem? inst_from_mem: inst_from_ret;
+    assign rdata = pause_pop? pause_reg: (flush_reg? 0: (data_from_mem? inst_from_mem: inst_from_ret));
     
     /* LRU */
     /* 
@@ -227,6 +228,33 @@ module icache #(
         end
     end
     assign lru_sel = lru_reg[w_index][0];
+
+    //flush reg
+    reg flush_reg;
+    reg flush_rst;
+    always @(posedge clk) begin
+        if(!rstn || flush_rst) begin
+            flush_reg <= 0;
+        end
+        else begin
+            if(flush) begin
+                flush_reg <= 1'b1;
+            end
+        end
+    end
+
+    //pause reg
+    reg     [31:0]  pause_reg;
+    reg             pause_push;
+    reg             pause_pop;
+    always @(posedge clk) begin
+        if(!rstn || pause_pop) begin
+            pause_reg <= 0;
+        end
+        if(pause_push) begin
+            pause_reg <= (flush_reg? 0: (data_from_mem? inst_from_mem: inst_from_ret));
+        end
+    end
 
     /* main FSM */
     // FIXME: No.2 TODO in LRU module
@@ -285,6 +313,9 @@ module icache #(
         data_from_mem           = 1;
         lru_hit_update          = 0;
         lru_ref_update          = 0;
+        flush_rst               = 0;
+        pause_push              = 0;
+        pause_pop               = 0;
 
         case(state)
         IDLE: begin
@@ -293,8 +324,10 @@ module icache #(
         LOOKUP: begin
             if(cache_hit) begin
                 rready              = 1;
-                req_buf_we          = rvalid;
+                req_buf_we          = rvalid && !stall;
                 lru_hit_update      = 1;
+                flush_rst           = flush_reg && !flush;
+                pause_push          = stall;
             end
         end
         MISS: begin
@@ -304,12 +337,17 @@ module icache #(
             tagv_we                 = lru_sel ? 2'b10 : 2'b01;
             mem_we                  = lru_sel ? 2'b10 : 2'b01;
             rready                  = 1;
-            req_buf_we              = rvalid;
+            req_buf_we              = rvalid && !stall;
             data_from_mem           = 0;
             lru_ref_update          = 1;
+            flush_rst               = flush_reg && !flush;
+            pause_push              = stall;
         end
         PAUSE: begin
             rready                  = 1;
+            req_buf_we              = rvalid && !stall;
+            flush_rst               = flush_reg && !flush;
+            pause_pop               = !stall;
         end
         default:;
         endcase

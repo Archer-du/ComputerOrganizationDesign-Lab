@@ -9,7 +9,7 @@ module PC(
     always @(posedge clk or posedge rst) begin
         if(!stall) begin
             if(rst) begin
-                pc_cur <= 32'hfffffffc;
+                pc_cur <= 32'b0;
             end
             else begin
                 pc_cur <= pc_next;

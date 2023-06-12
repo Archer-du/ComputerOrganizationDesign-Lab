@@ -16,6 +16,7 @@ module CPU(
     output  [31:0]  im_addr,        // Instruction address (The same as current PC)
     input   [31:0]  im_dout,        // Instruction data (Current instruction)
     output          im_stall,
+    output          im_flush,
 
     // dcache: AXI4--valid/ready
     output  [31:0]  dm_addr,        // Memory read/write address
@@ -25,6 +26,7 @@ module CPU(
     input           dm_wready,
     input   [31:0]  dm_dout,	    // Data read from memory
     output          dm_stall,
+    output          dm_flush,
     output  [31:0]  dm_din,         // Data ready to write to memory
     output          dm_we,          // Memory writing enable
     output  [3:0]   dm_wstrb
@@ -43,9 +45,6 @@ module CPU(
     wire        stall_if2;
     wire        flush_if2;
     wire [31:0] pc_cur_if2;
-    wire [4:0]  rf_ra0_if2;
-    wire [4:0]  rf_ra1_if2;
-    wire [4:0]  rf_wa_if2;
     wire [31:0] pc_add4_if2;
 
     wire        im_rvalid_if2;
@@ -64,9 +63,9 @@ module CPU(
     wire [31:0] rf_wd_wb;
     wire [31:0] rf_rd0_raw_id;
     wire [31:0] rf_rd1_raw_id;
+    wire [31:0] rf_rd0_id;
+    wire [31:0] rf_rd1_id;
     
-    wire [31:0] rf_rd_dbg_id;
-
     wire        rf_re0_id;
     wire        rf_re1_id;
     wire [1:0]  rf_wd_sel_id;
@@ -80,12 +79,14 @@ module CPU(
     wire        jal_id;
     wire        jalr_id;
     wire [2:0]  br_type_id;
+    wire        br_id;
+    wire [31:0] pc_jal_br_id;
+    wire [31:0] pc_jalr_id;
     wire        dm_we_id;
 
     wire        im_rvalid_id;
 
 //  EX wires
-    wire        stall_ex;
     wire        flush_ex;
     wire [31:0] pc_cur_ex;
     wire [31:0] inst_ex;
@@ -106,7 +107,6 @@ module CPU(
     wire        jalr_ex;
     wire [2:0]  br_type_ex;
 
-    wire [31:0] dm_din_ex;
     wire        dm_we_ex;
 
     wire [31:0] alu_src1_ex;
@@ -117,6 +117,8 @@ module CPU(
     wire [31:0] rf_rd0_ex;
     wire [31:0] rf_rd1_ex;
     wire        br_ex;
+    wire [31:0] pc_br_ex;
+    wire [31:0] pc_jal_ex;
     wire [31:0] pc_jalr_ex;
 
     wire        im_rvalid_ex;
@@ -207,6 +209,8 @@ module CPU(
     wire        dm_wvalid_wb;
 
     //Hazard
+    wire        rf_rd0_fe;
+    wire        rf_rd1_fe;
     wire [31:0] rf_rd0_fd;
     wire [31:0] rf_rd1_fd;
 
@@ -215,10 +219,15 @@ module CPU(
     wire        dcache_miss;
 
     assign im_stall = stall_if1 || dcache_miss;
+    assign im_flush = flush_if2;
     assign dm_stall = icache_miss;
-    assign im_rvalid = !(pc_cur_if1 == 32'hfffffffc);
-    assign dm_rvalid = (pc_cur_ex == 32'hfffffffc)? 0: (inst_ex[6:0] == LOAD);
-    assign dm_wvalid = (pc_cur_ex == 32'hfffffffc)? 0: (inst_ex[6:0] == STORE);
+    assign dm_flush = 0;
+    assign im_rvalid = 1'b1;
+    assign dm_rvalid = (inst_ex[6:0] == LOAD);
+    assign dm_wvalid = (inst_ex[6:0] == STORE);
+    assign icache_miss = im_rvalid_if2 && !im_rready;
+    assign dm_wstrb = (inst_ex[6:0] == STORE)? 4'hf: 4'h0;
+    assign dcache_miss = (dm_rvalid_mem && !dm_rready) || (dm_wvalid_mem && !dm_wready);//FIXME:
 
     //IF1 segment
     PC PC(
@@ -238,21 +247,22 @@ module CPU(
 
     SEG_REG IF1_IF2(
         .clk(clk),
+        .rst(rst),
         .stall(stall_if2 || icache_miss || dcache_miss),
         .flush(flush_if2),
 
         .pc_cur_in(pc_cur_if1),
         .inst_in(32'b0),
 
-        .rf_ra0_in(inst[19:15]),
-        .rf_ra1_in(inst[24:20]),
+        .rf_ra0_in(5'b0),
+        .rf_ra1_in(5'b0),
         .rf_re0_in(1'h0),
         .rf_re1_in(1'h0),
         .rf_rd0_raw_in(32'h0),
         .rf_rd1_raw_in(32'h0),
         .rf_rd0_in(32'h0),
         .rf_rd1_in(32'h0),
-        .rf_wa_in(inst[11:7]),
+        .rf_wa_in(5'b0),
         .rf_wd_sel_in(2'h0),
         .rf_we_in(1'h0),
 
@@ -285,35 +295,32 @@ module CPU(
 
         //output
         .pc_cur_out(pc_cur_if2),
-        .rf_ra0_out(rf_ra0_if2),
-        .rf_ra1_out(rf_ra1_if2),
-        .rf_wa_out(rf_wa_if2),
         .pc_add4_out(pc_add4_if2),
 
         .im_rvalid_out(im_rvalid_if2)
 
     );
 
-    assign icache_miss = im_rvalid_if2 && !im_rready;
 
     //IF2 segment
     SEG_REG IF2_ID(
         .clk(clk),
+        .rst(rst),
         .stall(stall_id || icache_miss || dcache_miss),//FIXME:
         .flush(flush_id),
 
-        .pc_cur_in(pc_cur_if1),
+        .pc_cur_in(pc_cur_if2),
         .inst_in(inst),
 
-        .rf_ra0_in(rf_ra0_if2),
-        .rf_ra1_in(rf_ra1_if2),
+        .rf_ra0_in(inst[19:15]),
+        .rf_ra1_in(inst[24:20]),
         .rf_re0_in(1'h0),
         .rf_re1_in(1'h0),
         .rf_rd0_raw_in(32'h0),
         .rf_rd1_raw_in(32'h0),
         .rf_rd0_in(32'h0),
         .rf_rd1_in(32'h0),
-        .rf_wa_in(rf_wa_if2),
+        .rf_wa_in(inst[11:7]),
         .rf_wd_sel_in(2'h0),
         .rf_we_in(1'h0),
 
@@ -390,9 +397,53 @@ module CPU(
         .mem_we(dm_we_id)
     );
 
+    MUX RD_MUX1(
+        .sel(rf_rd0_fe),
+        .src0(rf_rd0_raw_id),
+        .src1(rf_rd0_fd),
+        .res(rf_rd0_id)
+    );
+
+    MUX RD_MUX2(
+        .sel(rf_rd1_fe),
+        .src0(rf_rd1_raw_id),
+        .src1(rf_rd1_fd),
+        .res(rf_rd1_id)
+    );
+
+    Branch Branch_signals(
+        .br_type(br_type_id),
+        .op1(rf_rd0_id),
+        .op2(rf_rd1_id),
+        .br(br_id)
+    );
+
+    PC_pre pre_PC(
+        .inst_id(inst_id),
+
+        .pc_cur_id(pc_cur_id),
+        .imm_id(imm_id),
+        .rf_rd0_id(rf_rd0_id),
+
+        .pc_jal_br_id(pc_jal_br_id),
+        .pc_jalr_id(pc_jalr_id)
+    );
+
+    MUX_PC PC_MUX(
+        .jal(jal_id),
+        .jalr(jalr_id),
+        .br(br_id),
+
+        .pc_add4(pc_add4_if1),
+        .pc_jal_br(pc_jal_br_id),
+        .pc_jalr(pc_jalr_id),
+        .pc_next(pc_next)
+    );
+
     SEG_REG ID_EX(
         .clk(clk),
-        .stall(stall_ex || dcache_miss || icache_miss),//FIXME:
+        .rst(rst),
+        .stall(dcache_miss || icache_miss),//FIXME:
         .flush(flush_ex),
 
         //input
@@ -405,8 +456,8 @@ module CPU(
         .rf_re1_in(rf_re1_id),
         .rf_rd0_raw_in(rf_rd0_raw_id),
         .rf_rd1_raw_in(rf_rd1_raw_id),
-        .rf_rd0_in(32'h0),
-        .rf_rd1_in(32'h0),
+        .rf_rd0_in(rf_rd0_id),
+        .rf_rd1_in(rf_rd1_id),
         .rf_wa_in(rf_wa_id),
         .rf_wd_sel_in(rf_wd_sel_id),
         .rf_we_in(rf_we_id),
@@ -421,13 +472,13 @@ module CPU(
         .alu_ans_in(32'h0),
 
         .pc_add4_in(pc_add4_id),
-        .pc_br_in(32'h0),
-        .pc_jal_in(32'h0),
-        .pc_jalr_in(32'h0),
+        .pc_br_in(pc_jal_br_id),
+        .pc_jal_in(pc_jal_br_id),
+        .pc_jalr_in(pc_jalr_id),
         .jal_in(jal_id),
         .jalr_in(jalr_id),
         .br_type_in(br_type_id),
-        .br_in(1'h0),
+        .br_in(br_id),
         .pc_next_in(32'h0),
         .dm_addr_in(32'h0),
         .dm_din_in(32'h0),
@@ -448,6 +499,8 @@ module CPU(
         .rf_re1_out(rf_re1_ex),
         .rf_rd0_raw_out(rf_rd0_raw_ex),
         .rf_rd1_raw_out(rf_rd1_raw_ex),
+        .rf_rd0_out(rf_rd0_ex),
+        .rf_rd1_out(rf_rd1_ex),
         .rf_wa_out(rf_wa_ex),
         .rf_wd_sel_out(rf_wd_sel_ex),
         .rf_we_out(rf_we_ex),
@@ -459,10 +512,14 @@ module CPU(
         .alu_func_out(alu_func_ex),
 
         .pc_add4_out(pc_add4_ex),
+        .pc_br_out(pc_br_ex),
+        .pc_jal_out(pc_jal_ex),
+        .pc_jalr_out(pc_jalr_ex),
 
         .jal_out(jal_ex),
         .jalr_out(jalr_ex),
         .br_type_out(br_type_ex),
+        .br_out(br_ex),
 
         .dm_we_out(dm_we_ex),
 
@@ -491,47 +548,11 @@ module CPU(
         .res(alu_src2_ex)
     );
 
-    MUX RD_MUX1(
-        .sel(rf_rd0_fe),
-        .src0(rf_rd0_raw_ex),
-        .src1(rf_rd0_fd),
-        .res(rf_rd0_ex)
-    );
-
-    MUX RD_MUX2(
-        .sel(rf_rd1_fe),
-        .src0(rf_rd1_raw_ex),
-        .src1(rf_rd1_fd),
-        .res(rf_rd1_ex)
-    );
-
-    Branch Branch_signals(
-        .br_type(br_type_ex),
-        .op1(rf_rd0_ex),
-        .op2(rf_rd1_ex),
-        .br(br_ex)
-    );
-
-    MUX_PC PC_MUX(
-        .jal(jal_ex),
-        .jalr(jalr_ex),
-        .br(br_ex),
-        .pc_add4(pc_add4_if1),
-        .pc_jal_br(alu_ans_ex),
-        .pc_jalr(pc_jalr_ex),
-        .pc_next(pc_next)
-    );
-
-    AND_jalr jalr_ANDgate(
-        .lhs(32'hFFFFFFFE),
-        .rhs(alu_ans_ex),
-        .res(pc_jalr_ex)
-    );
-
     SEG_REG EX_MEM(
         .clk(clk),
+        .rst(rst),
         .stall(dcache_miss || icache_miss),
-        .flush(flush_mem),
+        .flush(1'b0),
 
         //input
         .pc_cur_in(pc_cur_ex),
@@ -559,8 +580,8 @@ module CPU(
         .alu_ans_in(alu_ans_ex),
 
         .pc_add4_in(pc_add4_ex),
-        .pc_br_in(alu_ans_ex),
-        .pc_jal_in(alu_ans_ex),
+        .pc_br_in(pc_br_ex),
+        .pc_jal_in(pc_jal_ex),
         .pc_jalr_in(pc_jalr_ex),
         .jal_in(jal_ex),
         .jalr_in(jalr_ex),
@@ -619,12 +640,11 @@ module CPU(
         .dm_wvalid_out(dm_wvalid_mem)
     );
 
-    assign dm_wstrb = (inst_ex[6:0] == STORE)? 4'hf: 4'h0;
-    assign dcache_miss = (dm_rvalid_mem && !dm_rready) || (dm_wvalid_mem && !dm_wready);//FIXME:
-    
+
     //MEM segment
     SEG_REG MEM_WB(
         .clk(clk),
+        .rst(rst),
         .stall(dcache_miss || icache_miss),
         .flush(1'h0),
 
@@ -711,8 +731,8 @@ module CPU(
         .dm_we_out(dm_we_wb),
 
         .im_rvalid_out(im_rvalid_wb),
-        .dm_rvalid_out(dm_rvalid_out),
-        .dm_wvalid_out(dm_wvalid_out)
+        .dm_rvalid_out(dm_rvalid_wb),
+        .dm_wvalid_out(dm_wvalid_wb)
     );
 
     MUX_RFwrite RF_writeback_MUX(
@@ -726,22 +746,29 @@ module CPU(
 
     //Hazard
     Hazard Hazard(
-        .rf_ra0_ex(rf_ra0_ex),
-        .rf_ra1_ex(rf_ra1_ex),
-        .rf_re0_ex(rf_re0_ex),
-        .rf_re1_ex(rf_re1_ex),
+        .rf_ra0_id(rf_ra0_id),
+        .rf_ra1_id(rf_ra1_id),
+        .rf_re0_id(rf_re0_id),
+        .rf_re1_id(rf_re1_id),
+
+        .rf_we_ex(rf_we_ex),
+        .rf_wa_ex(rf_wa_ex),
+        .rf_wd_sel_ex(rf_wd_sel_ex),
+        .alu_ans_ex(alu_ans_ex),
+        .pc_add4_ex(pc_add4_ex),
+        .imm_ex(imm_ex),
+
         .rf_we_mem(rf_we_mem),
         .rf_wa_mem(rf_wa_mem),
         .rf_wd_sel_mem(rf_wd_sel_mem),
         .alu_ans_mem(alu_ans_mem),
         .pc_add4_mem(pc_add4_mem),
         .imm_mem(imm_mem),
-        .rf_we_wb(rf_we_wb),
-        .rf_wa_wb(rf_wa_wb),
-        .rf_wd_wb(rf_wd_wb),
-        .jal_ex(jal_ex),
-        .jalr_ex(jalr_ex),
-        .br_ex(br_ex),
+        .dm_dout(dm_dout),
+
+        .jal_id(jal_id),
+        .jalr_id(jalr_id),
+        .br_id(br_id),
 
         .rf_rd0_fe(rf_rd0_fe),
         .rf_rd1_fe(rf_rd1_fe),
@@ -751,19 +778,17 @@ module CPU(
         .stall_if1(stall_if1),
         .stall_if2(stall_if2),
         .stall_id(stall_id),
-        .stall_ex(stall_ex),
 
         .flush_if2(flush_if2),
         .flush_id(flush_id),
-        .flush_ex(flush_ex),
-        .flush_mem(flush_mem)
+        .flush_ex(flush_ex)
     );
 
     assign inst     = im_dout;
 
     assign im_addr  = pc_cur_if1;
-    assign dm_addr = alu_ans_mem;
-    assign dm_din  = dm_din_mem;
-    assign dm_we   = dm_we_mem;
+    assign dm_addr = alu_ans_ex;
+    assign dm_din  = rf_rd1_ex;
+    assign dm_we   = dm_we_ex;
 
 endmodule

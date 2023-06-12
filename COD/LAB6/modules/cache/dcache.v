@@ -33,6 +33,7 @@ module dcache #(
     input [3:0]             wstrb,              // write mask of each write-back word from pipeline, if the request is a read request, wstrb is 4'b0
 
     input                   stall,
+    input                   flush,
 
     /* from AXI arbiter */
     // read
@@ -98,7 +99,7 @@ module dcache #(
     reg                         wdata_from_pipe;
 
     // rdata control
-    reg     [BIT_NUM-1:0]       rdata_512;
+    //reg     [BIT_NUM-1:0]       rdata_512;
     reg                         data_from_mem;
 
     // LRU replace
@@ -249,7 +250,7 @@ module dcache #(
     endgenerate
     assign rdata_from_mem = rdata_mem[req_buf[BYTE_OFFSET_WIDTH-1:2]];
     assign rdata_from_ret = rdata_ret[req_buf[BYTE_OFFSET_WIDTH-1:2]];
-    assign rdata = data_from_mem? rdata_from_mem: rdata_from_ret;
+    assign rdata = pause_pop? pause_reg: (flush_reg? 0: (data_from_mem? rdata_from_mem: rdata_from_ret));
 
     /* LRU replace */
     /* 
@@ -355,6 +356,33 @@ module dcache #(
     assign d_wdata  = wbuf[31:0];
     assign d_wstrb  = 4'b1111;
 
+    //flush reg
+    reg flush_reg;
+    reg flush_rst;
+    always @(posedge clk) begin
+        if(!rstn || flush_rst) begin
+            flush_reg <= 0;
+        end
+        else begin
+            if(flush) begin
+                flush_reg <= 1'b1;
+            end
+        end
+    end
+
+    //pause reg
+    reg     [31:0]  pause_reg;
+    reg             pause_push;
+    reg             pause_pop;
+    always @(posedge clk) begin
+        if(!rstn || pause_pop) begin
+            pause_reg <= 0;
+        end
+        if(pause_push) begin
+            pause_reg <= flush_reg? 0: (data_from_mem? rdata_from_mem: rdata_from_ret);
+        end
+    end
+
     /* main FSM */
     // FIXME: No.2 TODO in LRU module and No.2 TODO in dirty table
     localparam 
@@ -376,7 +404,10 @@ module dcache #(
     always @(*) begin
         case(state)
         IDLE: begin
-            if(rvalid || wvalid) begin
+            if(stall) begin
+                next_state = IDLE;
+            end
+            else if(rvalid || wvalid) begin
                 next_state = LOOKUP;
             end
             else begin
@@ -385,7 +416,7 @@ module dcache #(
         end
         LOOKUP: begin
             if(cache_hit) begin
-                if(stall && d_rvalid)
+                if(stall)
                     next_state = PAUSE;
                 else
                     next_state = (rvalid || wvalid) ? LOOKUP : IDLE;
@@ -407,7 +438,7 @@ module dcache #(
         end
         WAIT_WRITE: begin
             if(wrt_finish) begin
-                if(stall && d_rvalid)
+                if(stall)
                     next_state = PAUSE;
                 else
                     next_state = (rvalid || wvalid) ? LOOKUP : IDLE;
@@ -417,7 +448,7 @@ module dcache #(
             end
         end
         PAUSE: begin
-            if(stall && d_rvalid)
+            if(stall)
                 next_state = PAUSE;
             else
                 next_state = (rvalid || wvalid) ? LOOKUP : IDLE;
@@ -447,18 +478,24 @@ module dcache #(
         lru_ref_update       = 0;
         dirty_hit_update     = 0;
         dirty_ref_update     = 0;
+        flush_rst            = 0;
+        pause_push           = 0;
+        pause_pop            = 0;
+
         case(state)
         IDLE: begin
-            req_buf_we = 1;
+            req_buf_we = !stall;
         end
         LOOKUP: begin
             if(cache_hit) begin
                 mem_we[hit_way]         = {{(BYTE_NUM-4){1'b0}}, wstrb_pipe} << {address[BYTE_OFFSET_WIDTH-1:2], 2'b0};
-                req_buf_we              = (rvalid || wvalid);
+                req_buf_we              = (rvalid || wvalid) && !stall;
                 rready                  = !we_pipe;
                 wready                  = we_pipe;
                 lru_hit_update          = 1;
                 dirty_hit_update        = we_pipe;
+                flush_rst               = flush_reg && !flush;
+                pause_push              = stall;
             end
             else begin
                 wbuf_we = 1;
@@ -481,11 +518,15 @@ module dcache #(
             rready          = wrt_finish & !we_pipe;
             wready          = wrt_finish & we_pipe;
             data_from_mem   = 0;
-            req_buf_we      = wrt_finish & (rvalid || wvalid);
+            req_buf_we      = (wrt_finish & (rvalid || wvalid)) && !stall;
+            flush_rst       = flush_reg && !flush;
+            pause_push      = stall;
         end
         PAUSE: begin
             rready          = !we_pipe;
             wready          = we_pipe;
+            req_buf_we      = (rvalid || wvalid) && !stall;
+            pause_pop       = !stall;
         end
         endcase
     end
